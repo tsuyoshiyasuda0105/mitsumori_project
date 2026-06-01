@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-slate-100 text-slate-900 antialiased;
+    font-feature-settings: "palt" 1;
+  }
+  /* 金額・数値は等幅で揃える */
+  .num {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+}
+
+@layer components {
+  /* タップ領域 44px を確保する主要ボタン */
+  .btn {
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold
+      transition-colors disabled:cursor-not-allowed disabled:opacity-50 select-none;
+  }
+  .btn-primary {
+    @apply btn bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800;
+  }
+  .btn-secondary {
+    @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 active:bg-slate-100;
+  }
+  .btn-ghost {
+    @apply btn text-slate-600 hover:bg-slate-200/70;
+  }
+  .btn-danger {
+    @apply btn bg-rose-600 text-white hover:bg-rose-700;
+  }
+
+  .card {
+    @apply rounded-2xl border border-slate-200 bg-white shadow-card;
+  }
+
+  .field-label {
+    @apply mb-1 block text-xs font-medium text-slate-500;
+  }
+  .field-input {
+    @apply min-h-[44px] w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900
+      placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30;
+  }
+  /* AI候補・明細編集向けのコンパクト入力 */
+  .cand-input {
+    @apply h-9 w-full rounded-lg border border-slate-300 bg-white px-2.5 text-sm text-slate-900
+      placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30;
+  }
+
+  /* 情報種別タグ — 顧客可視 / 内部 の取り違えを防ぐ最重要UI */
+  .tag {
+    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold leading-tight;
+  }
+  .tag-customer {
+    @apply tag bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-200;
+  }
+  .tag-internal {
+    @apply tag bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-300;
+  }
+  .tag-confirm {
+    @apply tag bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-200;
+  }
+  .tag-ai {
+    @apply tag bg-violet-50 text-violet-700 ring-1 ring-inset ring-violet-200;
+  }
+
+  /* 内部情報（PDF非表示）エリアを面で警告 */
+  .internal-surface {
+    @apply rounded-xl border border-amber-300 bg-amber-50/60;
+  }
+}
