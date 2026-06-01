@@ -59,6 +59,12 @@ function SiteHeader() {
 
         <div className="flex items-center gap-2">
           <Link
+            href="/contact"
+            className="hidden text-sm font-semibold text-slate-600 hover:text-brand-700 sm:inline"
+          >
+            お問い合わせ
+          </Link>
+          <Link
             href="/login"
             className="hidden text-sm font-semibold text-slate-600 hover:text-brand-700 sm:inline"
           >
@@ -600,6 +606,18 @@ function SiteFooter() {
           <a href="#separation" className="hover:text-brand-700">
             情報分離
           </a>
+          <Link href="/contact" className="hover:text-brand-700">
+            お問い合わせ
+          </Link>
+          <Link href="/tokushoho" className="hover:text-brand-700">
+            特定商取引法に基づく表記
+          </Link>
+          <Link href="/privacy" className="hover:text-brand-700">
+            プライバシーポリシー
+          </Link>
+          <Link href="/terms" className="hover:text-brand-700">
+            利用規約
+          </Link>
           <Link href="/login" className="hover:text-brand-700">
             ログイン
           </Link>

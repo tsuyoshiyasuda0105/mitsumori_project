@@ -15,6 +15,8 @@
 - UUIDでIDを推測しにくくしても、UUIDだけに依存しない。
 - DBレベルでもRow Level Security相当の制御を入れ、API実装ミスでも他社データを返さない設計にする。
 - ファイル、音声、Excel、PDF、AI解析履歴、打ち合わせ録音もすべて会社単位で分離する。
+- 認証はSupabase Authを利用し、アプリケーションDBの `users` はSupabase Authユーザーに紐づくプロフィール/権限テーブルとして扱う。
+- Supabase Storageのバケットは非公開を基本とし、会社IDを含むパスと署名URLでアクセス制御する。
 
 ## 3. テナント構造
 
@@ -33,15 +35,15 @@ tenants
 
 ### 3.2 users
 
-ユーザーは必ず1つの会社に所属する。
+ユーザーは必ず1つの会社に所属する。認証自体はSupabase Authが担当し、アプリDBの `users` は業務上のプロフィール、会社所属、ロール、権限を管理する。
 
 ```text
 users
 - id
+- auth_user_id
 - tenant_id
 - name
 - email
-- password_hash
 - role
 - permissions
 - status
@@ -53,6 +55,7 @@ users
 
 ```json
 {
+  "auth_user_id": "uuid",
   "user_id": "uuid",
   "tenant_id": "uuid",
   "role": "admin"
@@ -161,13 +164,14 @@ audit_logs(tenant_id, created_at)
 
 ## 7. Row Level Security
 
-PostgreSQLを使う場合、MVPでも可能な範囲でRow Level Securityを導入することを推奨する。
+Supabase Postgresでは、MVPでもRow Level Securityを導入することを推奨する。
 
 ### 7.1 基本方針
 
 - tenant対象テーブルでRLSを有効化する。
-- DB接続ごと、またはトランザクションごとに `app.tenant_id` を設定する。
-- RLSポリシーで `tenant_id = current_setting('app.tenant_id')::uuid` を強制する。
+- ブラウザからSupabaseを直接利用する場合は、Supabase Authの `auth.uid()` をもとに `users.auth_user_id` から `tenant_id` を判定する。
+- Vercel APIからService Role Keyを使う処理ではRLSをバイパスできるため、API層で必ず `tenant_id` 条件を付ける。Service RoleはWebhook、ジョブ、管理系処理など最小範囲に限定する。
+- 将来、アプリ独自のDB接続を使う場合は、トランザクションごとに `app.tenant_id` を設定し、`tenant_id = current_setting('app.tenant_id')::uuid` を強制する方式も併用できる。
 
 ### 7.2 RLS例
 
@@ -176,8 +180,22 @@ ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY tenant_isolation_customers
 ON customers
-USING (tenant_id = current_setting('app.tenant_id')::uuid)
-WITH CHECK (tenant_id = current_setting('app.tenant_id')::uuid);
+USING (
+  tenant_id in (
+    select tenant_id
+    from users
+    where auth_user_id = auth.uid()
+      and status = 'active'
+  )
+)
+WITH CHECK (
+  tenant_id in (
+    select tenant_id
+    from users
+    where auth_user_id = auth.uid()
+      and status = 'active'
+  )
+);
 ```
 
 同様のポリシーを以下にも設定する。
@@ -281,6 +299,8 @@ findEstimateById(session, estimateId) {
 
 音声、打ち合わせ録音、アップロードExcel、生成Excel、生成PDF、ロゴは `files` テーブルで管理し、必ず `tenant_id` を持つ。
 
+ファイル本体はSupabase Storageに保存する。バケットは非公開を基本とし、ブラウザから直接公開URLで参照させない。アップロード、ダウンロード、削除はVercel APIで会社IDと権限を検証し、必要に応じて短時間の署名URLを発行する。
+
 ### 10.1 storage_key
 
 ストレージキーには会社IDを含める。
@@ -292,6 +312,8 @@ tenants/{tenant_id}/exports/{file_id}.xlsx
 tenants/{tenant_id}/exports/{file_id}.pdf
 tenants/{tenant_id}/logos/{file_id}.png
 ```
+
+Supabase StorageのRLSまたは署名URL発行処理でも、上記パスの `{tenant_id}` と `files.tenant_id` が一致することを検証する。
 
 ### 10.2 署名URL発行
 
@@ -319,8 +341,7 @@ Workerジョブにも必ず `tenant_id` を含める。
 Workerは処理開始時に以下を行う。
 
 - job.tenant_id を取得する。
-- DBセッションに `app.tenant_id` を設定する。
-- 対象データを `tenant_id` 付きで再取得する。
+- Supabase Service Roleを使う場合でも、対象データを `tenant_id` 付きで再取得する。
 - job内のIDだけを信用しない。
 
 ## 12. AI連携時の分離

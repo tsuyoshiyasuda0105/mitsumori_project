@@ -63,6 +63,47 @@ export function StatusBadge({ status }: { status: EstimateStatus }) {
   );
 }
 
+/* ── ページ見出し（全画面共通） ──────────────────
+   会社設定で確立した「グラデーション角丸チップ + タイトル + 補足」を
+   一覧・管理系の各画面で共通化し、トーンを統一する。 */
+
+export function PageHeader({
+  icon,
+  title,
+  description,
+  actions,
+  className = "",
+}: {
+  icon?: ReactNode;
+  title: ReactNode;
+  description?: ReactNode;
+  actions?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`flex flex-wrap items-center justify-between gap-3 ${className}`}
+    >
+      <div className="flex min-w-0 items-center gap-3">
+        {icon && (
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-600 to-brand-800 text-white shadow-panel">
+            {icon}
+          </span>
+        )}
+        <div className="min-w-0">
+          <h1 className="truncate text-xl font-bold text-slate-900">{title}</h1>
+          {description && (
+            <p className="mt-0.5 text-sm text-slate-500">{description}</p>
+          )}
+        </div>
+      </div>
+      {actions && (
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">{actions}</div>
+      )}
+    </div>
+  );
+}
+
 /* ── セクションカード ────────────────────────── */
 
 export function SectionCard({
@@ -118,8 +159,19 @@ export function StatTile({
     rose: "text-rose-700",
     sky: "text-sky-700",
   };
+  const accentStrip: Record<string, string> = {
+    slate: "bg-slate-300",
+    brand: "bg-brand-500",
+    amber: "bg-amber-400",
+    emerald: "bg-emerald-400",
+    rose: "bg-rose-400",
+    sky: "bg-sky-400",
+  };
   return (
-    <div className="card p-4">
+    <div className="card relative overflow-hidden p-4 pl-5">
+      <span
+        className={`absolute inset-y-0 left-0 w-1.5 ${accentStrip[accent]}`}
+      />
       <div className="text-xs font-medium text-slate-500">{label}</div>
       <div className={`mt-1 num text-2xl font-bold ${accentText[accent]}`}>
         {value}

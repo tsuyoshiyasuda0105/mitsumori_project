@@ -74,6 +74,7 @@ export function ExportSettings({ estimate }: { estimate: Estimate }) {
   return (
     <div>
       <FocusHeader
+        icon={<Download className="text-lg" />}
         title={estimate.title || "見積"}
         subtitle="出力設定"
         variant="back"

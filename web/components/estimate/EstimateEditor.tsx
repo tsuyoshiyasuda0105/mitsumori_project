@@ -8,6 +8,7 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
+  FileText,
   Mic,
   Plus,
   Sparkles,
@@ -128,6 +129,7 @@ export function EstimateEditor({
   return (
     <div>
       <FocusHeader
+        icon={<FileText className="text-lg" />}
         title={isNew ? "新規見積" : "見積編集"}
         subtitle={
           <span className="flex items-center gap-1.5">
@@ -159,7 +161,15 @@ export function EstimateEditor({
         <div className="space-y-4 lg:col-span-2">
           {/* 基本情報 */}
           <section className="card p-4">
-            <h2 className="mb-3 text-sm font-bold text-slate-700">基本情報</h2>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="text-sm font-bold text-slate-700">基本情報</h2>
+              <Link
+                href="./meeting"
+                className="btn-secondary h-9 min-h-0 gap-1.5 px-3 text-xs"
+              >
+                <Mic className="text-base" /> 打ち合わせ録音
+              </Link>
+            </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <label className="field-label">顧客</label>
@@ -247,12 +257,9 @@ export function EstimateEditor({
           </section>
 
           {/* 入力アクション */}
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <Link href="./voice" className="btn-primary">
               <Mic className="text-lg" /> 明細をボイス入力
-            </Link>
-            <Link href="./meeting" className="btn-secondary">
-              <Mic className="text-lg" /> 打ち合わせを録音
             </Link>
             <button className="btn-secondary" onClick={() => addLine("normal")}>
               <Plus className="text-lg" /> 手入力で明細追加

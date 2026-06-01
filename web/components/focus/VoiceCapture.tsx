@@ -81,6 +81,7 @@ export function VoiceCapture({
   return (
     <div>
       <FocusHeader
+        icon={<Mic className="text-lg" />}
         title={title || "新規見積"}
         subtitle="ボイス入力"
         variant="back"

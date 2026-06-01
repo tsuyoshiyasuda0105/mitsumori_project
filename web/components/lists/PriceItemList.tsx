@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Search, Spreadsheet, TagIcon } from "@/components/icons";
-import { EmptyState } from "@/components/ui";
+import { EmptyState, PageHeader } from "@/components/ui";
 import { yen } from "@/lib/format";
 import { priceItems } from "@/lib/mock";
 
@@ -28,13 +28,18 @@ export function PriceItemList() {
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <h1 className="text-lg font-bold text-slate-800">単価マスター</h1>
-        <Link href="/import" className="btn-secondary">
-          <Spreadsheet className="text-base" />
-          <span className="hidden sm:inline">Excel取込</span>
-        </Link>
-      </div>
+      <PageHeader
+        className="mb-4"
+        icon={<TagIcon className="text-xl" />}
+        title="単価マスター"
+        description="見積に使う品目と単価を管理します。"
+        actions={
+          <Link href="/import" className="btn-secondary">
+            <Spreadsheet className="text-base" />
+            <span className="hidden sm:inline">Excel取込</span>
+          </Link>
+        }
+      />
 
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">

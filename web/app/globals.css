@@ -59,7 +59,7 @@
 
   /* 情報種別タグ — 顧客可視 / 内部 の取り違えを防ぐ最重要UI */
   .tag {
-    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold leading-tight;
+    @apply inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold leading-tight;
   }
   .tag-customer {
     @apply tag bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-200;

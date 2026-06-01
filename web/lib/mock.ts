@@ -7,7 +7,7 @@ import type {
 } from "./types";
 
 export const company: Company = {
-  name: "幸田塗装工業 株式会社",
+  name: "〇〇株式会社",
   postalCode: "444-0123",
   address: "愛知県額田郡幸田町大字芦谷字○○1-2-3",
   phone: "0564-00-0000",

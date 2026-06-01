@@ -10,6 +10,7 @@ import {
   Upload,
   X,
 } from "@/components/icons";
+import { PageHeader } from "@/components/ui";
 import { yen } from "@/lib/format";
 
 const STEPS = [
@@ -99,7 +100,12 @@ export function ImportWizard() {
 
   return (
     <div>
-      <h1 className="mb-4 text-lg font-bold text-slate-800">単価マスター Excel取込</h1>
+      <PageHeader
+        className="mb-5"
+        icon={<Spreadsheet className="text-xl" />}
+        title="Excel取込"
+        description="単価表のExcelを取り込んで単価マスターを更新します。"
+      />
 
       <Stepper step={step} />
 

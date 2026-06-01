@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { EstimateCard } from "@/components/EstimateCard";
-import { Plus, Search } from "@/components/icons";
-import { EmptyState, StatusBadge } from "@/components/ui";
+import { FileText, Plus, Search } from "@/components/icons";
+import { EmptyState, PageHeader, StatusBadge } from "@/components/ui";
 import { computeTotals } from "@/lib/calc";
 import { fmtDate, yen } from "@/lib/format";
 import { customerName, estimates } from "@/lib/mock";
@@ -39,13 +39,18 @@ export function EstimateList() {
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <h1 className="text-lg font-bold text-slate-800">見積一覧</h1>
-        <Link href="/estimates/new/edit" className="btn-primary">
-          <Plus className="text-base" />
-          <span className="hidden sm:inline">新規見積</span>
-        </Link>
-      </div>
+      <PageHeader
+        className="mb-4"
+        icon={<FileText className="text-xl" />}
+        title="見積一覧"
+        description="作成中・提出済みの見積をまとめて管理します。"
+        actions={
+          <Link href="/estimates/new/edit" className="btn-primary">
+            <Plus className="text-base" />
+            <span className="hidden sm:inline">新規見積</span>
+          </Link>
+        }
+      />
 
       {/* 検索・絞り込み */}
       <div className="mb-4 space-y-3">

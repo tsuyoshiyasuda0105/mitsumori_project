@@ -77,7 +77,12 @@ export function MeetingRecorder({
 
   return (
     <div>
-      <FocusHeader title={title || "新規見積"} subtitle="打ち合わせ録音" variant="back" />
+      <FocusHeader
+        icon={<Mic className="text-lg" />}
+        title={title || "新規見積"}
+        subtitle="打ち合わせ録音"
+        variant="back"
+      />
 
       {/* 営業メモである旨の明示 */}
       <div className="mb-4 flex items-start gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-3.5 text-sm text-slate-600">

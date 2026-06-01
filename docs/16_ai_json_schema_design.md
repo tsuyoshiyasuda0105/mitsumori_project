@@ -21,16 +21,17 @@ AI解析結果はあくまで候補であり、ユーザーが確認・採用す
 MVPの対象:
 
 - 音声文字起こし後のテキスト解析
-- 顧客候補の抽出
-- 見積基本情報候補の抽出
 - 見積明細候補の抽出
 - 単価マスター候補の推測
 - 不足情報、確認事項の抽出
-- 顧客向け説明文案の生成
+- 明細単位の備考候補の抽出
 - 業者指示事項候補の抽出
 
 対象外:
 
+- 顧客情報、現場住所、見積件名、見積日、有効期限、担当者などのヘッダー情報入力
+- 顧客向け備考など見積ヘッダー領域の文案生成
+- 明細単位の単位判断
 - 最終金額の確定
 - 法的判断
 - 契約条件の確定
@@ -42,11 +43,13 @@ MVPの対象:
 
 - AI出力はJSON Schemaに準拠させる。
 - スキーマは `schema_version` でバージョン管理する。
-- AIは単価マスター候補を提示するが、最終採用はユーザーが行う。
-- 単価と金額はサーバー側で再計算する。
+- AIは単価マスター品目候補を提示するが、最終採用はユーザーが行う。
+- 明細の単位と単価は、ユーザーが選択した単価マスターから取得する。AIは単位を判断しない。
+- 金額はサーバー側で再計算する。
 - 業者指示事項は内部情報として扱い、顧客提出用PDFには渡さない。
 - AIが不明な情報を推測で埋めない。不足情報は `missing_information` に出す。
 - `tenant_id` はAIへ渡さず、サーバー側で管理する。
+- 顧客情報、見積件名、見積日、有効期限、担当者などのヘッダー情報はAI出力に含めない。
 
 ## 5. 処理フロー
 
@@ -69,7 +72,7 @@ AIは以下のトップレベルJSONを返す。
 
 ```json
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "language": "ja",
   "summary": "外壁塗装の見積候補です。",
   "source_quality": {
@@ -77,12 +80,9 @@ AIは以下のトップレベルJSONを返す。
     "has_noise": false,
     "ambiguous_phrases": []
   },
-  "customer": {},
-  "estimate": {},
   "line_candidates": [],
   "missing_information": [],
   "internal_vendor_instruction_candidates": [],
-  "customer_note_draft": null,
   "assumptions": [],
   "warnings": []
 }
@@ -90,16 +90,13 @@ AIは以下のトップレベルJSONを返す。
 
 | フィールド | 型 | 必須 | 説明 |
 | --- | --- | --- | --- |
-| `schema_version` | string | YES | スキーマバージョン。MVPは `1.0` |
+| `schema_version` | string | YES | スキーマバージョン。MVPは `1.1` |
 | `language` | string | YES | 言語。日本語は `ja` |
 | `summary` | string | YES | 入力内容の短い要約 |
 | `source_quality` | object | YES | 入力音声またはテキストの品質情報 |
-| `customer` | object/null | YES | 顧客候補 |
-| `estimate` | object | YES | 見積基本情報候補 |
 | `line_candidates` | array | YES | 見積明細候補 |
 | `missing_information` | array | YES | 不足情報、確認事項 |
 | `internal_vendor_instruction_candidates` | array | YES | 業者指示事項候補 |
-| `customer_note_draft` | string/null | YES | 顧客向け備考文案 |
 | `assumptions` | array | YES | AIが置いた仮定 |
 | `warnings` | array | YES | 注意事項 |
 
@@ -126,65 +123,39 @@ UI表示:
 - `has_noise = true` の場合、確認画面に「聞き取り不確実」バッジを表示する。
 - `ambiguous_phrases` がある場合、確認事項に表示する。
 
-## 8. customer
+## 8. ヘッダー情報の扱い
 
-```json
-{
-  "name": "田中太郎",
-  "name_kana": null,
-  "contact_name": "田中様",
-  "phone": null,
-  "email": null,
-  "address": "東京都...",
-  "confidence": 0.72
-}
-```
+AIは顧客情報や見積ヘッダー情報を入力しない。
 
-| フィールド | 型 | 必須 | 説明 |
-| --- | --- | --- | --- |
-| `name` | string/null | YES | 顧客名候補 |
-| `name_kana` | string/null | YES | 顧客名カナ候補 |
-| `contact_name` | string/null | YES | 担当者名、呼称 |
-| `phone` | string/null | YES | 電話番号候補 |
-| `email` | string/null | YES | メール候補 |
-| `address` | string/null | YES | 住所候補 |
-| `confidence` | number | YES | 顧客情報抽出の信頼度 |
+AI出力に含めない項目:
 
-ルール:
+- 顧客名
+- 顧客住所
+- 顧客電話番号
+- 顧客メールアドレス
+- 顧客担当者名
+- 現場住所
+- 見積件名
+- 見積日
+- 有効期限
+- 担当者
+- 見積ステータス
+- 顧客向け備考
+- 見積全体の業者指示事項
 
-- 顧客名が不明な場合は `null` にする。
-- 既存顧客との照合はAIではなくサーバー側で行う。
-- 顧客の新規作成はユーザー確認後に行う。
+これらは、見積編集画面でユーザーが選択または入力する。AI解析結果確認画面では、ヘッダー情報の候補を表示しない。
 
-## 9. estimate
+## 9. 明細単位の扱い
 
-```json
-{
-  "title": "外壁塗装工事",
-  "site_address": "東京都...",
-  "desired_date": null,
-  "estimate_date_hint": null,
-  "expires_on_hint": null,
-  "status_hint": "draft",
-  "confidence": 0.78
-}
-```
+AIは明細の単位を判断しない。
 
-| フィールド | 型 | 必須 | 説明 |
-| --- | --- | --- | --- |
-| `title` | string/null | YES | 件名候補 |
-| `site_address` | string/null | YES | 現場住所候補 |
-| `desired_date` | string/null | YES | 希望日、工期の候補 |
-| `estimate_date_hint` | string/null | YES | 見積日候補。通常はnull |
-| `expires_on_hint` | string/null | YES | 有効期限候補。通常はnull |
-| `status_hint` | string | YES | 原則 `draft` |
-| `confidence` | number | YES | 見積基本情報の信頼度 |
+単位の決定ルール:
 
-ルール:
-
-- `status_hint` は原則 `draft` のみ。
-- 日付が曖昧な場合は本文を `missing_information` に出す。
-- AIが見積番号を作成しない。見積番号はサーバーが採番する。
+- 単位は、ユーザーが選択した単価マスター品目に紐づく `unit` を使用する。
+- AIの明細候補には `unit` を含めない。
+- AIは「m2」「式」「個」などを発話から推測して明細単位として返さない。
+- 単価マスター候補の中に表示される `unit` は、DBの単価マスターに登録された値であり、AIが判断した値ではない。
+- 単価マスター候補が選べない場合は、ユーザーが単価マスターを選択または登録する。
 
 ## 10. line_candidates
 
@@ -199,10 +170,8 @@ UI表示:
     "item_name": "外壁塗装",
     "description": "外壁塗装 下塗り・上塗り",
     "quantity": 120,
-    "unit": "m2",
     "line_type": "normal",
     "matched_price_item_candidates": [],
-    "ai_suggested_unit_price": null,
     "customer_note": null,
     "internal_vendor_instruction": null,
     "confidence": 0.8,
@@ -220,10 +189,8 @@ UI表示:
 | `item_name` | string | YES | 品目名候補 |
 | `description` | string/null | YES | 明細説明 |
 | `quantity` | number/null | YES | 数量 |
-| `unit` | string/null | YES | 単位 |
 | `line_type` | string | YES | `normal`, `discount`, `expense`, `note` |
 | `matched_price_item_candidates` | array | YES | 単価マスター候補 |
-| `ai_suggested_unit_price` | number/null | YES | AI参考単価。原則使用しない |
 | `customer_note` | string/null | YES | 顧客向け明細備考 |
 | `internal_vendor_instruction` | string/null | YES | 明細単位の業者指示事項候補 |
 | `confidence` | number | YES | 明細候補の信頼度 |
@@ -239,12 +206,11 @@ UI表示:
 | `expense` | 諸経費 |
 | `note` | 金額なし注記 |
 
-### 10.2 数量・単位ルール
+### 10.2 数量ルール
 
 - 数量が聞き取れない場合は `quantity = null`。
-- 単位が聞き取れない場合は `unit = null`。
-- 「一式」は `quantity = 1`, `unit = "式"` とする。
-- 坪、平米、m2などは原文を尊重しつつ、可能なら `m2` など標準表記に正規化する。
+- 「一式」と発話された場合も、AIは単位を返さない。数量を `1` とするかどうかは候補として扱い、ユーザー確認対象にする。
+- 坪、平米、m2など単位に関わる表現は、明細単位として確定せず、必要に応じて `source_text` または `missing_information` に残す。
 - 単位変換が必要な場合は勝手に変換せず、`missing_information` に出す。
 
 ## 11. matched_price_item_candidates
@@ -258,7 +224,7 @@ UI表示:
     "name": "外壁塗装",
     "unit": "m2",
     "unit_price": 2500,
-    "match_reason": "品目名と単位が一致",
+    "match_reason": "品目名が近い。単位と単価は単価マスターの値",
     "confidence": 0.86
   }
 ]
@@ -268,8 +234,8 @@ UI表示:
 | --- | --- | --- | --- |
 | `price_item_id` | string | YES | 単価マスターID |
 | `name` | string | YES | 品目名 |
-| `unit` | string | YES | 単位 |
-| `unit_price` | number | YES | 単価 |
+| `unit` | string | YES | 単価マスターに登録された単位。AI判断値ではない |
+| `unit_price` | number | YES | 単価マスターに登録された単価 |
 | `match_reason` | string | YES | 候補理由 |
 | `confidence` | number | YES | 候補信頼度 |
 
@@ -278,6 +244,7 @@ UI表示:
 - AIに渡す単価候補は、必ず同一会社の単価マスターに限定する。
 - AIが返した `price_item_id` はサーバー側で再検証する。
 - `price_item_id` が存在しない、他会社、無効品目の場合は候補から除外する。
+- 候補内の `unit` と `unit_price` はDB値を表示する。AIが単位や単価を判断した値として扱わない。
 - 候補は最大5件を目安とする。
 
 ## 12. missing_information
@@ -289,8 +256,8 @@ UI表示:
   {
     "id": "miss-001",
     "field": "paint_grade",
-    "scope": "estimate",
-    "line_candidate_id": null,
+    "scope": "line",
+    "line_candidate_id": "cand-001",
     "question": "使用する塗料グレードを確認してください。",
     "severity": "warning",
     "suggested_choices": [
@@ -306,7 +273,7 @@ UI表示:
 | --- | --- | --- | --- |
 | `id` | string | YES | 確認事項ID |
 | `field` | string | YES | 対象フィールド |
-| `scope` | string | YES | `estimate`, `line`, `customer` |
+| `scope` | string | YES | `analysis`, `line` |
 | `line_candidate_id` | string/null | YES | 明細候補に紐づく場合のID |
 | `question` | string | YES | ユーザーへ表示する質問 |
 | `severity` | string | YES | `info`, `warning`, `blocking` |
@@ -340,7 +307,7 @@ UI表示:
 | フィールド | 型 | 必須 | 説明 |
 | --- | --- | --- | --- |
 | `id` | string | YES | 候補ID |
-| `scope` | string | YES | `estimate`, `line` |
+| `scope` | string | YES | `line` |
 | `line_candidate_id` | string/null | YES | 明細候補に紐づく場合のID |
 | `text` | string | YES | 業者指示事項候補 |
 | `source_text` | string | YES | 根拠となる発話 |
@@ -351,22 +318,20 @@ UI表示:
 - 業者指示事項は内部情報である。
 - 顧客向けPDFには絶対に出力しない。
 - AI解析結果確認画面では「内部用」「PDF非表示」と明示する。
-- ユーザーが採用した場合のみ、`estimates.internal_vendor_instruction` または `estimate_lines.internal_vendor_instruction` に保存する。
+- ユーザーが採用した場合のみ、`estimate_lines.internal_vendor_instruction` に保存する。
+- 見積全体の業者指示事項はAIで入力せず、ユーザーが見積編集画面で入力する。
 
-## 14. customer_note_draft
+## 14. 明細備考候補
 
-顧客向け備考の文案を返す。
+顧客向け備考などの見積ヘッダー領域はAIで入力しない。
 
-```json
-"外壁塗装工事一式のお見積りです。現地確認内容に基づき、足場、高圧洗浄、塗装作業を含めています。"
-```
+AIが生成できる備考は、`line_candidates[].customer_note` の明細単位の備考候補のみとする。
 
 ルール:
 
-- 顧客向けにそのまま表示される可能性があるため、丁寧な文体にする。
-- 業者指示事項、内部事情、原価、粗利は含めない。
-- 法的・契約的に断定しすぎる表現を避ける。
-- ユーザー編集後にのみ見積へ反映する。
+- 見積全体の顧客向け備考はユーザーが入力する。
+- 明細備考候補にも、業者指示事項、内部事情、原価、粗利を含めない。
+- 明細備考候補はユーザーが採用した場合のみ明細へ反映する。
 
 ## 15. assumptions
 
@@ -404,14 +369,14 @@ AIが置いた仮定を返す。
 | `message` | string | YES | 表示メッセージ |
 | `severity` | string | YES | `info`, `warning`, `blocking` |
 
-## 17. JSON Schema v1.0
+## 17. JSON Schema v1.1
 
-MVPで使用するJSON Schema。
+MVPで使用するJSON Schema。v1.1では、顧客情報や見積ヘッダー情報、明細単位をAI出力から除外する。
 
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://mitsumori.example.com/schemas/estimate-ai-extraction-1.0.json",
+  "$id": "https://mitsumori.example.com/schemas/estimate-ai-extraction-1.1.json",
   "title": "EstimateAIExtraction",
   "type": "object",
   "additionalProperties": false,
@@ -420,114 +385,51 @@ MVPで使用するJSON Schema。
     "language",
     "summary",
     "source_quality",
-    "customer",
-    "estimate",
     "line_candidates",
     "missing_information",
     "internal_vendor_instruction_candidates",
-    "customer_note_draft",
     "assumptions",
     "warnings"
   ],
   "properties": {
-    "schema_version": {
-      "const": "1.0"
-    },
-    "language": {
-      "type": "string",
-      "enum": ["ja"]
-    },
-    "summary": {
-      "type": "string",
-      "maxLength": 1000
-    },
+    "schema_version": { "const": "1.1" },
+    "language": { "type": "string", "enum": ["ja"] },
+    "summary": { "type": "string", "maxLength": 1000 },
     "source_quality": {
       "type": "object",
       "additionalProperties": false,
       "required": ["transcript_confidence", "has_noise", "ambiguous_phrases"],
       "properties": {
-        "transcript_confidence": {
-          "type": ["number", "null"],
-          "minimum": 0,
-          "maximum": 1
-        },
-        "has_noise": {
-          "type": "boolean"
-        },
+        "transcript_confidence": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "has_noise": { "type": "boolean" },
         "ambiguous_phrases": {
           "type": "array",
-          "items": {
-            "type": "string",
-            "maxLength": 500
-          }
+          "items": { "type": "string", "maxLength": 500 }
         }
-      }
-    },
-    "customer": {
-      "type": ["object", "null"],
-      "additionalProperties": false,
-      "required": ["name", "name_kana", "contact_name", "phone", "email", "address", "confidence"],
-      "properties": {
-        "name": { "type": ["string", "null"], "maxLength": 255 },
-        "name_kana": { "type": ["string", "null"], "maxLength": 255 },
-        "contact_name": { "type": ["string", "null"], "maxLength": 255 },
-        "phone": { "type": ["string", "null"], "maxLength": 50 },
-        "email": { "type": ["string", "null"], "maxLength": 255 },
-        "address": { "type": ["string", "null"], "maxLength": 2000 },
-        "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
-      }
-    },
-    "estimate": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["title", "site_address", "desired_date", "estimate_date_hint", "expires_on_hint", "status_hint", "confidence"],
-      "properties": {
-        "title": { "type": ["string", "null"], "maxLength": 255 },
-        "site_address": { "type": ["string", "null"], "maxLength": 2000 },
-        "desired_date": { "type": ["string", "null"], "maxLength": 255 },
-        "estimate_date_hint": { "type": ["string", "null"], "maxLength": 50 },
-        "expires_on_hint": { "type": ["string", "null"], "maxLength": 50 },
-        "status_hint": { "type": "string", "enum": ["draft"] },
-        "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
       }
     },
     "line_candidates": {
       "type": "array",
       "maxItems": 100,
-      "items": {
-        "$ref": "#/$defs/lineCandidate"
-      }
+      "items": { "$ref": "#/$defs/lineCandidate" }
     },
     "missing_information": {
       "type": "array",
       "maxItems": 100,
-      "items": {
-        "$ref": "#/$defs/missingInformation"
-      }
+      "items": { "$ref": "#/$defs/missingInformation" }
     },
     "internal_vendor_instruction_candidates": {
       "type": "array",
       "maxItems": 100,
-      "items": {
-        "$ref": "#/$defs/internalVendorInstructionCandidate"
-      }
-    },
-    "customer_note_draft": {
-      "type": ["string", "null"],
-      "maxLength": 3000
+      "items": { "$ref": "#/$defs/internalVendorInstructionCandidate" }
     },
     "assumptions": {
       "type": "array",
-      "items": {
-        "type": "string",
-        "maxLength": 1000
-      }
+      "items": { "type": "string", "maxLength": 1000 }
     },
     "warnings": {
       "type": "array",
-      "items": {
-        "$ref": "#/$defs/warning"
-      }
+      "items": { "$ref": "#/$defs/warning" }
     }
   },
   "$defs": {
@@ -541,10 +443,8 @@ MVPで使用するJSON Schema。
         "item_name",
         "description",
         "quantity",
-        "unit",
         "line_type",
         "matched_price_item_candidates",
-        "ai_suggested_unit_price",
         "customer_note",
         "internal_vendor_instruction",
         "confidence",
@@ -558,14 +458,12 @@ MVPで使用するJSON Schema。
         "item_name": { "type": "string", "maxLength": 255 },
         "description": { "type": ["string", "null"], "maxLength": 2000 },
         "quantity": { "type": ["number", "null"], "minimum": 0 },
-        "unit": { "type": ["string", "null"], "maxLength": 50 },
         "line_type": { "type": "string", "enum": ["normal", "discount", "expense", "note"] },
         "matched_price_item_candidates": {
           "type": "array",
           "maxItems": 5,
           "items": { "$ref": "#/$defs/priceItemCandidate" }
         },
-        "ai_suggested_unit_price": { "type": ["number", "null"], "minimum": 0 },
         "customer_note": { "type": ["string", "null"], "maxLength": 2000 },
         "internal_vendor_instruction": { "type": ["string", "null"], "maxLength": 2000 },
         "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
@@ -593,7 +491,7 @@ MVPで使用するJSON Schema。
       "properties": {
         "id": { "type": "string", "maxLength": 100 },
         "field": { "type": "string", "maxLength": 100 },
-        "scope": { "type": "string", "enum": ["estimate", "line", "customer"] },
+        "scope": { "type": "string", "enum": ["analysis", "line"] },
         "line_candidate_id": { "type": ["string", "null"], "maxLength": 100 },
         "question": { "type": "string", "maxLength": 1000 },
         "severity": { "type": "string", "enum": ["info", "warning", "blocking"] },
@@ -610,7 +508,7 @@ MVPで使用するJSON Schema。
       "required": ["id", "scope", "line_candidate_id", "text", "source_text", "confidence"],
       "properties": {
         "id": { "type": "string", "maxLength": 100 },
-        "scope": { "type": "string", "enum": ["estimate", "line"] },
+        "scope": { "type": "string", "enum": ["line"] },
         "line_candidate_id": { "type": ["string", "null"], "maxLength": 100 },
         "text": { "type": "string", "maxLength": 2000 },
         "source_text": { "type": "string", "maxLength": 1000 },
@@ -635,31 +533,13 @@ MVPで使用するJSON Schema。
 
 ```json
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "language": "ja",
-  "summary": "田中様宅の外壁塗装について、外壁120m2、足場、高圧洗浄を含む見積候補です。",
+  "summary": "外壁120m2、足場、高圧洗浄を含む明細候補です。",
   "source_quality": {
     "transcript_confidence": 0.84,
     "has_noise": false,
     "ambiguous_phrases": []
-  },
-  "customer": {
-    "name": "田中太郎",
-    "name_kana": null,
-    "contact_name": "田中様",
-    "phone": null,
-    "email": null,
-    "address": null,
-    "confidence": 0.74
-  },
-  "estimate": {
-    "title": "外壁塗装工事",
-    "site_address": null,
-    "desired_date": null,
-    "estimate_date_hint": null,
-    "expires_on_hint": null,
-    "status_hint": "draft",
-    "confidence": 0.82
   },
   "line_candidates": [
     {
@@ -669,7 +549,6 @@ MVPで使用するJSON Schema。
       "item_name": "外壁塗装",
       "description": "外壁塗装",
       "quantity": 120,
-      "unit": "m2",
       "line_type": "normal",
       "matched_price_item_candidates": [
         {
@@ -677,11 +556,10 @@ MVPで使用するJSON Schema。
           "name": "外壁塗装",
           "unit": "m2",
           "unit_price": 2500,
-          "match_reason": "品目名と単位が一致",
+          "match_reason": "品目名が一致。単位と単価は単価マスターの値",
           "confidence": 0.86
         }
       ],
-      "ai_suggested_unit_price": null,
       "customer_note": null,
       "internal_vendor_instruction": null,
       "confidence": 0.82,
@@ -695,10 +573,8 @@ MVPで使用するJSON Schema。
       "item_name": "足場",
       "description": "仮設足場",
       "quantity": null,
-      "unit": "式",
       "line_type": "normal",
       "matched_price_item_candidates": [],
-      "ai_suggested_unit_price": null,
       "customer_note": null,
       "internal_vendor_instruction": "足場設置時に隣地境界を確認する。",
       "confidence": 0.68,
@@ -712,7 +588,7 @@ MVPで使用するJSON Schema。
       "field": "quantity",
       "scope": "line",
       "line_candidate_id": "cand-002",
-      "question": "足場の数量または一式金額を確認してください。",
+      "question": "足場に対応する単価マスター品目と数量を確認してください。",
       "severity": "warning",
       "suggested_choices": []
     }
@@ -727,9 +603,8 @@ MVPで使用するJSON Schema。
       "confidence": 0.72
     }
   ],
-  "customer_note_draft": "外壁塗装工事について、外壁塗装、足場、高圧洗浄を含めたお見積りです。",
   "assumptions": [
-    "外壁面積は発話内容の120m2を使用しています。"
+    "外壁の数量は発話内容の120を使用しています。単位は単価マスター選択後に決まります。"
   ],
   "warnings": [
     {
@@ -750,11 +625,12 @@ AIレスポンス受信後、サーバー側で以下を検証する。
 3. `candidate_id` がレスポンス内で重複していないこと。
 4. `line_candidate_id` が存在する候補を参照していること。
 5. `matched_price_item_candidates.price_item_id` が同一会社の有効な単価マスターであること。
-6. `unit_price` はサーバー側の単価マスター値を正とすること。
-7. `quantity`, `unit_price`, `amount` はサーバー側で再計算すること。
-8. `internal_vendor_instruction` は顧客向けDTOに渡さないこと。
-9. 長すぎる文字列は保存前にエラーまたは切り詰め確認を行うこと。
-10. `blocking` の確認事項がある場合は、見積への確定反映を止めること。
+6. `line_candidates` に `unit` や `unit_price` が含まれていないこと。
+7. 単位と単価は、ユーザーが選択した単価マスターのDB値を正とすること。
+8. `quantity` と `amount` はサーバー側で再計算すること。
+9. `internal_vendor_instruction` は顧客向けDTOに渡さないこと。
+10. 長すぎる文字列は保存前にエラーまたは切り詰め確認を行うこと。
+11. `blocking` の確認事項がある場合は、見積への確定反映を止めること。
 
 ## 20. 単価マスター候補生成ルール
 
@@ -767,7 +643,6 @@ AI解析前後で以下の2段階照合を行う。
 候補抽出条件:
 
 - 品目名の部分一致
-- 単位の一致
 - かな、漢字、表記揺れを考慮した簡易正規化
 - 有効品目のみ
 
@@ -778,7 +653,7 @@ AIが返した候補をサーバー側で再検証する。
 - 存在しない `price_item_id` は除外。
 - 他会社の `price_item_id` は除外。
 - 無効品目は除外。
-- 単価はDB値で上書き。
+- 単位と単価はDB値で上書き。
 - 候補が0件の場合、手入力品目として表示。
 
 ## 21. UI反映ルール
@@ -789,16 +664,15 @@ AI解析結果確認画面では以下の表示にする。
 | --- | --- |
 | `summary` | 解析概要 |
 | `line_candidates` | 明細候補カードまたは表 |
-| `matched_price_item_candidates` | 単価マスター候補の選択肢 |
+| `matched_price_item_candidates` | 単価マスター候補の選択肢。単位と単価はマスター値として表示 |
 | `missing_information` | 確認事項リスト |
 | `internal_vendor_instruction_candidates` | 内部用・PDF非表示の指示候補 |
-| `customer_note_draft` | 顧客向け備考案 |
 | `warnings` | 警告バナー |
 
 採用ルール:
 
 - 明細候補はユーザーが選択したものだけ見積に反映する。
-- 単価マスター候補はユーザーが選択する。
+- 単価マスター候補はユーザーが選択する。選択後、単価マスターの単位と単価を明細へ反映する。
 - 業者指示事項候補は初期状態では未採用にする。
 - `needs_user_confirmation = true` の候補は確認済みになるまで強調表示する。
 - `severity = blocking` の確認事項がある場合は「見積へ反映」ボタンを無効にする。
@@ -811,12 +685,12 @@ AI解析結果確認画面では以下の表示にする。
 - 不明な項目は推測で埋めず `null` にする。
 - 不足情報は `missing_information` に出す。
 - 金額は最終確定しない。
-- 単価は候補として扱う。
-- 顧客向け備考に内部情報、業者指示、原価、粗利を含めない。
-- 業者指示事項は `internal_vendor_instruction_candidates` または明細の `internal_vendor_instruction` に分離する。
-- 顧客向けPDFに出すべきでない内容は、顧客向け文案に混ぜない。
+- 単位を判断しない。明細候補に `unit` を出力しない。
+- 単価を判断しない。明細候補に `unit_price` を出力しない。
+- 顧客情報、現場住所、見積件名、見積日、有効期限、担当者、顧客向け備考などのヘッダー情報を出力しない。
+- 業者指示事項は明細単位の `internal_vendor_instruction_candidates` または明細の `internal_vendor_instruction` に分離する。
 - 同一の作業を重複して明細化しない。
-- 数量や単位が不明な場合は確認事項にする。
+- 数量が不明な場合は確認事項にする。単位が不明な場合は、単価マスター選択で決めるためAIは補完しない。
 
 ## 23. 保存方針
 
@@ -837,12 +711,14 @@ MVPでは1つの `extraction_json` に保存してよいが、将来は以下に
 
 - AIレスポンスがJSON Schemaに準拠している。
 - 必須項目が欠けている場合は保存せずエラーにする。
+- AIレスポンスに顧客情報、見積ヘッダー情報、顧客向け備考案が含まれない。
+- AIレスポンスの明細候補に `unit` と `unit_price` が含まれない。
 - 他会社の単価マスターIDが混入してもサーバー側で除外する。
-- AIが返した単価はDB単価で再検証される。
+- AIが返した単価マスター候補はDBの単位・単価で再検証される。
 - AI解析結果はユーザーが採用するまで見積に反映されない。
 - 業者指示事項候補は顧客向けPDF DTOに含まれない。
 - `blocking` の確認事項がある場合、見積への反映が止まる。
-- サンプル音声から、場所、品目、数量、単位、備考、業者指示事項候補を抽出できる。
+- サンプル音声から、場所、品目候補、数量、明細備考、業者指示事項候補を抽出できる。
 
 ## 25. 今後の拡張
 
@@ -853,4 +729,3 @@ MVPでは1つの `extraction_json` に保存してよいが、将来は以下に
 | 業種別スキーマ | 外壁塗装、水道修理、電気工事などで確認項目を切り替える |
 | 類似見積検索 | 過去見積候補をAI入力に加える。ただし会社単位の分離を必須とする |
 | OpenAPI連携 | API仕様とJSON Schemaを型生成に利用する |
-

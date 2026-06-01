@@ -82,6 +82,7 @@ export function AiReview({ estimateId }: { estimateId: string }) {
   return (
     <div>
       <FocusHeader
+        icon={<Sparkles className="text-lg" />}
         title={result.titleSuggestion}
         subtitle="AI解析結果の確認"
         variant="back"

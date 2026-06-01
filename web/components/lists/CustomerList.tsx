@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { FileText, Search, Users } from "@/components/icons";
-import { EmptyState } from "@/components/ui";
+import { EmptyState, PageHeader } from "@/components/ui";
 import { customers, estimates } from "@/lib/mock";
 
 export function CustomerList() {
@@ -25,7 +25,12 @@ export function CustomerList() {
 
   return (
     <div>
-      <h1 className="mb-4 text-lg font-bold text-slate-800">顧客一覧</h1>
+      <PageHeader
+        className="mb-4"
+        icon={<Users className="text-xl" />}
+        title="顧客一覧"
+        description="顧客情報と見積履歴を管理します。"
+      />
 
       <div className="relative mb-4">
         <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-slate-400" />
