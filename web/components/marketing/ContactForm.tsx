@@ -4,8 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, Check, HelpCircle } from "@/components/icons";
 
-// 公開前に、自社の受信用メールアドレスへ変更してください。
-const CONTACT_EMAIL = "your-email@example.com";
+// 受信用メールアドレス。変更する場合はここを書き換えてください。
+const CONTACT_EMAIL = "tsuyoshi.yasuda0105@gmail.com";
 
 const KINDS = ["導入のご相談", "お見積もり", "取材・提携", "その他"];
 
@@ -54,7 +54,7 @@ export function ContactForm() {
       <div className="mt-5 flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50/70 p-3 text-sm text-amber-800">
         <AlertTriangle className="mt-0.5 shrink-0 text-base" />
         <p>
-          このデモでは、送信ボタンを押すとお使いのメールソフトが起動します（サーバーへの自動送信は行いません）。公開前に送信先メールアドレスの設定が必要です。
+          このデモでは、送信ボタンを押すとお使いのメールソフトが起動します（サーバーへの自動送信は行いません）。ご記入内容が宛先に差し込まれた状態でメール作成画面が開きます。
         </p>
       </div>
 
