@@ -1,10 +1,20 @@
 import type { MetadataRoute } from "next";
-
-const SITE_URL = "https://web-beryl-one-79.vercel.app";
+import { SITE_URL } from "@/lib/site";
 
 export default function robots(): MetadataRoute.Robots {
   return {
-    rules: { userAgent: "*", allow: "/" },
+    rules: {
+      userAgent: "*",
+      allow: "/",
+      disallow: [
+        "/customers",
+        "/estimates",
+        "/import",
+        "/price-items",
+        "/settings",
+        "/login",
+      ],
+    },
     sitemap: `${SITE_URL}/sitemap.xml`,
     host: SITE_URL,
   };

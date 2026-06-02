@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="ボイス見積 建設業向け音声AI見積作成システム">
+  <rect width="1200" height="630" fill="#0f172a"/>
+  <rect x="58" y="58" width="1084" height="514" rx="34" fill="#111827" stroke="#334155" stroke-width="2"/>
+  <circle cx="1030" cy="120" r="170" fill="#4f46e5" opacity="0.28"/>
+  <circle cx="106" cy="520" r="150" fill="#0ea5e9" opacity="0.18"/>
+
+  <rect x="86" y="86" width="68" height="68" rx="18" fill="#4f46e5"/>
+  <text x="120" y="131" text-anchor="middle" font-size="34" font-weight="700" font-family="Meiryo, Arial, sans-serif" fill="#ffffff">声</text>
+  <text x="176" y="130" font-size="32" font-weight="700" font-family="Meiryo, Arial, sans-serif" fill="#ffffff">ボイス見積</text>
+
+  <text x="86" y="238" font-size="64" font-weight="900" font-family="Meiryo, Arial, sans-serif" fill="#ffffff">現場で話した内容を、</text>
+  <text x="86" y="320" font-size="64" font-weight="900" font-family="Meiryo, Arial, sans-serif" fill="#bae6fd">見積明細の下書きに。</text>
+  <text x="86" y="386" font-size="28" font-family="Meiryo, Arial, sans-serif" fill="#cbd5e1">建設業向け 音声AI見積作成システム</text>
+
+  <g transform="translate(760 178)">
+    <rect width="320" height="318" rx="24" fill="#ffffff" opacity="0.12" stroke="#ffffff" stroke-opacity="0.18"/>
+    <rect x="24" y="26" width="272" height="74" rx="16" fill="#ffffff" opacity="0.14"/>
+    <text x="44" y="58" font-size="18" font-weight="700" font-family="Meiryo, Arial, sans-serif" fill="#bae6fd">外壁</text>
+    <text x="44" y="86" font-size="24" font-weight="800" font-family="Meiryo, Arial, sans-serif" fill="#ffffff">シリコン塗装</text>
+    <text x="210" y="86" font-size="20" font-family="Arial, sans-serif" fill="#d1fae5">432,000円</text>
+
+    <rect x="24" y="122" width="272" height="74" rx="16" fill="#ffffff" opacity="0.14"/>
+    <text x="44" y="154" font-size="18" font-weight="700" font-family="Meiryo, Arial, sans-serif" fill="#bae6fd">足場</text>
+    <text x="44" y="182" font-size="24" font-weight="800" font-family="Meiryo, Arial, sans-serif" fill="#ffffff">くさび式足場</text>
+    <text x="210" y="182" font-size="20" font-family="Arial, sans-serif" fill="#d1fae5">189,000円</text>
+
+    <rect x="24" y="218" width="272" height="74" rx="16" fill="#f59e0b" opacity="0.22" stroke="#fbbf24" stroke-opacity="0.3"/>
+    <text x="44" y="250" font-size="18" font-weight="700" font-family="Meiryo, Arial, sans-serif" fill="#fde68a">内部メモ</text>
+    <text x="44" y="278" font-size="20" font-weight="700" font-family="Meiryo, Arial, sans-serif" fill="#fff7ed">PDFには非表示</text>
+  </g>
+
+  <rect x="86" y="452" width="210" height="44" rx="12" fill="#ffffff" opacity="0.12"/>
+  <text x="108" y="481" font-size="20" font-family="Meiryo, Arial, sans-serif" fill="#ffffff">音声入力</text>
+  <rect x="316" y="452" width="270" height="44" rx="12" fill="#ffffff" opacity="0.12"/>
+  <text x="338" y="481" font-size="20" font-family="Meiryo, Arial, sans-serif" fill="#ffffff">単価マスターExcel取込</text>
+  <rect x="606" y="452" width="230" height="44" rx="12" fill="#ffffff" opacity="0.12"/>
+  <text x="628" y="481" font-size="20" font-family="Meiryo, Arial, sans-serif" fill="#ffffff">Excel/PDF出力</text>
+</svg>

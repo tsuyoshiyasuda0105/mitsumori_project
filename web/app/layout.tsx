@@ -1,26 +1,70 @@
 import type { Metadata, Viewport } from "next";
+import {
+  DEFAULT_SITE_DESCRIPTION,
+  DEFAULT_SITE_TITLE,
+  SITE_NAME,
+  SITE_URL,
+} from "@/lib/site";
 import "./globals.css";
-
-const SITE_URL = "https://web-beryl-one-79.vercel.app";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "ボイス見積 | 音声AI見積作成",
-  description: "現場で音声入力、AIが見積明細を下書き。Excel/PDFで出力できる見積作成システム。",
-  applicationName: "ボイス見積",
+  title: {
+    default: DEFAULT_SITE_TITLE,
+    template: `%s | ${SITE_NAME}`,
+  },
+  description: DEFAULT_SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  authors: [{ name: SITE_NAME }],
+  creator: SITE_NAME,
+  publisher: SITE_NAME,
+  category: "business software",
+  keywords: [
+    "建設業 見積",
+    "音声入力 見積",
+    "AI 見積",
+    "見積作成システム",
+    "単価マスター",
+    "Excel 見積",
+    "リフォーム 見積",
+    "外壁塗装 見積",
+    "見積書 PDF",
+  ],
+  alternates: {
+    canonical: "/lp",
+  },
   openGraph: {
     type: "website",
     locale: "ja_JP",
-    siteName: "ボイス見積",
-    url: "/",
-    title: "ボイス見積 | 音声AI見積作成",
-    description:
-      "現場で音声入力、AIが見積明細を下書き。Excel/PDFで出力できる見積作成システム。",
+    siteName: SITE_NAME,
+    url: "/lp",
+    title: DEFAULT_SITE_TITLE,
+    description: DEFAULT_SITE_DESCRIPTION,
+    images: [
+      {
+        url: "/og-image.svg",
+        width: 1200,
+        height: 630,
+        alt: "ボイス見積 建設業向け音声AI見積作成システム",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "ボイス見積 | 音声AI見積作成",
-    description: "現場で話すだけ。AIが見積を下書きする音声AI見積作成システム。",
+    title: DEFAULT_SITE_TITLE,
+    description: DEFAULT_SITE_DESCRIPTION,
+    images: ["/og-image.svg"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
   },
 };
 
