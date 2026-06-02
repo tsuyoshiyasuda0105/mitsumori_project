@@ -1,15 +1,121 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import {
+  Building,
   Check,
   ChevronRight,
   EyeOff,
   FileText,
+  Lock,
   Mic,
+  Search,
   Share,
   Sparkles,
   Spreadsheet,
+  Upload,
 } from "@/components/icons";
+
+const NAV = [
+  { href: "#problem", label: "課題" },
+  { href: "#features", label: "機能" },
+  { href: "#flow", label: "流れ" },
+  { href: "#security", label: "安全設計" },
+  { href: "#faq", label: "FAQ" },
+];
+
+const PROBLEMS = [
+  {
+    title: "現場メモが散らばる",
+    body: "打ち合わせ内容が手帳、写真、LINE、記憶に分かれ、見積作成時に探し直しが発生します。",
+  },
+  {
+    title: "単価の確認に時間がかかる",
+    body: "品目ごとの単位や単価をExcelから探して転記するため、入力漏れや金額のばらつきが起きます。",
+  },
+  {
+    title: "内部メモの出し分けが怖い",
+    body: "原価、利益、業者への指示を見積書に載せないよう、出力前の確認に神経を使います。",
+  },
+];
+
+const FEATURES = [
+  {
+    icon: <Mic className="text-xl" />,
+    title: "音声から明細候補を作成",
+    body: "場所、品目、数量、備考、業者指示事項をAIが候補化。顧客や見積日などのヘッダ情報はAIで入力しません。",
+  },
+  {
+    icon: <Spreadsheet className="text-xl" />,
+    title: "単価マスターExcel取込",
+    body: "既存の単価表を取り込み、品目、単位、単価、外部品目IDを管理。AIは単位を推測せず、マスターの単位を使います。",
+  },
+  {
+    icon: <EyeOff className="text-xl" />,
+    title: "業者指示事項を分離",
+    body: "明細ごとに内部向け指示を保持。顧客向けPDFには出さず、社内確認用Excelには出力できます。",
+  },
+  {
+    icon: <FileText className="text-xl" />,
+    title: "Excel/PDF出力",
+    body: "顧客向け見積書PDFと、社内確認・業者指示用Excelを用途別に出力します。",
+  },
+  {
+    icon: <Lock className="text-xl" />,
+    title: "会社別データ分離",
+    body: "SupabaseのRLSを前提に、自社の顧客、単価、見積、音声ファイルだけを扱う設計です。",
+  },
+  {
+    icon: <Share className="text-xl" />,
+    title: "外部連携を見据えたID",
+    body: "単価マスターに独自IDを持たせ、原価管理、施工管理、会計ソフトへの将来連携に備えます。",
+  },
+];
+
+const STEPS = [
+  {
+    no: "01",
+    title: "顧客を選択",
+    body: "見積編集画面で顧客と件名を選びます。AIが顧客情報を勝手に入力することはありません。",
+  },
+  {
+    no: "02",
+    title: "現場内容を話す",
+    body: "スマホで作業内容を録音。テキスト入力からも同じ流れで明細候補を作れます。",
+  },
+  {
+    no: "03",
+    title: "単価マスターと照合",
+    body: "AIが品目候補を出し、単価マスターの単位と単価を候補として提示します。",
+  },
+  {
+    no: "04",
+    title: "確認して出力",
+    body: "担当者が明細を確認し、PDFまたはExcelで出力。業者指示事項は出力先ごとに分離します。",
+  },
+];
+
+const FAQS = [
+  {
+    q: "AIが見積金額を自動で確定しますか？",
+    a: "いいえ。AIは明細候補を作る補助役です。最終的な品目、数量、単価、金額は担当者が確認して確定します。",
+  },
+  {
+    q: "今使っているExcelの単価表は使えますか？",
+    a: "はい。列マッピングとプレビューを通して、既存の単価表を単価マスターへ取り込む前提です。",
+  },
+  {
+    q: "業者指示事項は顧客に見えませんか？",
+    a: "顧客向けPDFには出さず、社内確認用または業者指示用のExcelにのみ含める設計です。",
+  },
+  {
+    q: "他社のデータが見える心配はありませんか？",
+    a: "会社IDとRLSを使い、ログイン中の会社に紐づくデータだけを参照・更新する設計にします。",
+  },
+  {
+    q: "打ち合わせ録音機能も含まれますか？",
+    a: "打ち合わせ録音は別オプションとして扱います。MVP本体では見積明細作成に必要な音声入力を優先します。",
+  },
+];
 
 export function Landing() {
   return (
@@ -17,61 +123,57 @@ export function Landing() {
       <SiteHeader />
       <main>
         <Hero />
-        <Pain />
+        <Problem />
         <Features />
-        <HowItWorks />
-        <Separation />
-        <Industries />
-        <CtaBand />
+        <Flow />
+        <MasterImport />
+        <Security />
+        <Faq />
+        <FinalCta />
       </main>
       <SiteFooter />
     </div>
   );
 }
 
-/* ───────────────────────── ヘッダー ───────────────────────── */
-
-const NAV = [
-  { href: "#features", label: "特徴" },
-  { href: "#how", label: "使い方" },
-  { href: "#separation", label: "情報分離" },
-  { href: "#industries", label: "対象業種" },
-];
-
 function SiteHeader() {
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/85 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
         <Link href="/lp" className="flex items-center gap-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-white">
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 text-white">
             <Mic className="text-lg" />
           </span>
-          <span className="text-base font-bold tracking-tight">ボイス見積</span>
+          <span className="text-base font-bold">ボイス見積</span>
         </Link>
 
-        <nav className="hidden items-center gap-7 text-sm font-medium text-slate-600 lg:flex">
-          {NAV.map((n) => (
-            <a key={n.href} href={n.href} className="hover:text-brand-700">
-              {n.label}
+        <nav className="hidden items-center gap-6 text-sm font-medium text-slate-600 lg:flex">
+          {NAV.map((item) => (
+            <a key={item.href} href={item.href} className="hover:text-brand-700">
+              {item.label}
             </a>
           ))}
         </nav>
 
         <div className="flex items-center gap-2">
           <Link
-            href="/contact"
-            className="hidden text-sm font-semibold text-slate-600 hover:text-brand-700 sm:inline"
+            href="/blog"
+            className="hidden rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-900 sm:inline-flex"
           >
-            お問い合わせ
+            お役立ち記事
+          </Link>
+          <Link
+            href="/contact"
+            className="hidden rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-900 sm:inline-flex"
+          >
+            相談する
           </Link>
           <Link
             href="/login"
-            className="hidden text-sm font-semibold text-slate-600 hover:text-brand-700 sm:inline"
+            className="inline-flex min-h-[40px] items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white hover:bg-brand-700"
           >
-            ログイン
-          </Link>
-          <Link href="/login" className="btn-primary h-10 min-h-0 px-4 text-sm">
-            無料で試す
+            デモを試す
+            <ChevronRight className="text-base" />
           </Link>
         </div>
       </div>
@@ -79,128 +181,131 @@ function SiteHeader() {
   );
 }
 
-/* ───────────────────────── ヒーロー ───────────────────────── */
-
 function Hero() {
   return (
-    <section className="relative overflow-hidden">
-      <div className="pointer-events-none absolute -right-40 -top-40 h-[480px] w-[480px] rounded-full bg-brand-100/70 blur-3xl" />
-      <div className="pointer-events-none absolute -left-32 top-40 h-72 w-72 rounded-full bg-sky-100/60 blur-3xl" />
-
-      <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-5 py-16 lg:grid-cols-2 lg:py-24">
-        <div>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700 ring-1 ring-inset ring-brand-200">
+    <section className="relative overflow-hidden border-b border-slate-200 bg-slate-950 text-white">
+      <ProductScene />
+      <div className="relative mx-auto max-w-6xl px-5 py-16 sm:py-20 lg:py-24">
+        <div className="max-w-2xl">
+          <p className="inline-flex items-center gap-2 rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white">
             <Sparkles className="text-sm" />
-            外壁塗装・リフォーム業のための音声AI見積
-          </span>
-
-          <h1 className="mt-5 text-4xl font-extrabold leading-tight tracking-tight text-slate-900 sm:text-5xl">
-            現場で「話すだけ」。
-            <br />
-            <span className="text-brand-600">AIが見積</span>を下書きします。
+            建設業向け 音声AI見積作成システム
+          </p>
+          <h1 className="mt-5 text-4xl font-extrabold leading-tight sm:text-5xl">
+            現場で話した内容を、
+            <span className="block text-sky-200">見積明細の下書きに。</span>
           </h1>
-
-          <p className="mt-5 max-w-xl text-base leading-relaxed text-slate-600 sm:text-lg">
-            事務所に戻らず、現場のスマホで見積作成。話した内容をAIが文字起こしして、
-            品目・数量・単価の明細に自動変換。お手元のExcel単価表もそのまま使えます。
+          <p className="mt-5 max-w-xl text-base leading-8 text-slate-200 sm:text-lg">
+            ボイス見積は、外壁塗装・リフォーム・設備工事などの見積作成を、
+            音声入力、単価マスター照合、Excel/PDF出力まで一つの流れで支えるプロトタイプです。
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Link href="/login" className="btn-primary px-6 text-base">
-              無料で試す
-              <ChevronRight className="text-base" />
+            <Link
+              href="/login"
+              className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-lg bg-white px-6 text-base font-bold text-slate-950 hover:bg-slate-100"
+            >
+              デモを試す
+              <ChevronRight className="text-lg" />
             </Link>
-            <a href="#how" className="btn-secondary px-6 text-base">
-              使い方を見る
-            </a>
+            <Link
+              href="/contact"
+              className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-lg border border-white/30 px-6 text-base font-bold text-white hover:bg-white/10"
+            >
+              導入相談をする
+            </Link>
           </div>
 
-          <ul className="mt-8 grid gap-2.5 text-sm text-slate-600 sm:grid-cols-2">
-            {[
-              "登録なしでデモを体験",
-              "既存のExcel単価表を取込",
-              "顧客に内部情報が漏れない",
-              "PDF・Excelで出力",
-            ].map((t) => (
-              <li key={t} className="flex items-center gap-2">
-                <Check className="shrink-0 text-base text-emerald-500" />
-                {t}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="flex justify-center lg:justify-end">
-          <PhoneMock />
+          <div className="mt-8 grid gap-3 text-sm text-slate-200 sm:grid-cols-3">
+            <HeroPoint>単価表Excelを活用</HeroPoint>
+            <HeroPoint>業者指示事項を分離</HeroPoint>
+            <HeroPoint>会社別データ分離</HeroPoint>
+          </div>
         </div>
       </div>
     </section>
   );
 }
 
-/* ヒーローのスマホ・モック（録音中の画面イメージ） */
-const WAVE = [10, 18, 28, 16, 34, 22, 40, 30, 20, 12, 26, 38, 18, 24, 14];
-
-function PhoneMock() {
+function ProductScene() {
   return (
-    <div className="relative w-[280px] rounded-[2.2rem] border-[10px] border-slate-900 bg-slate-900 shadow-panel">
-      <div className="overflow-hidden rounded-[1.5rem] bg-slate-50">
-        {/* ステータスバー風 */}
-        <div className="flex items-center justify-between bg-white px-4 py-3">
-          <span className="text-xs font-semibold text-slate-400">外壁塗装の見積</span>
-          <span className="tag-ai">
-            <Sparkles className="text-[11px]" />
-            AI
-          </span>
-        </div>
-
-        {/* 録音エリア */}
-        <div className="flex flex-col items-center px-5 py-8">
-          <div className="relative flex h-28 w-28 items-center justify-center">
-            <span className="absolute inset-0 animate-pulse-rec rounded-full bg-rose-500/15" />
-            <span className="absolute inset-3 rounded-full bg-rose-500/20" />
-            <span className="relative flex h-16 w-16 items-center justify-center rounded-full bg-rose-500 text-white shadow-lg">
-              <Mic className="text-2xl" />
+    <div className="pointer-events-none absolute inset-0 opacity-85">
+      <div className="absolute inset-y-10 right-[-120px] hidden w-[680px] lg:block">
+        <div className="rounded-lg border border-white/15 bg-white/10 p-4 shadow-2xl backdrop-blur">
+          <div className="flex items-center justify-between border-b border-white/15 pb-3">
+            <div>
+              <div className="text-xs text-slate-300">見積編集</div>
+              <div className="mt-1 text-lg font-bold text-white">外壁塗装 A様邸</div>
+            </div>
+            <span className="rounded-lg bg-emerald-400/20 px-3 py-1 text-xs font-bold text-emerald-100">
+              AI候補確認中
             </span>
           </div>
+          <div className="mt-4 grid gap-3">
+            {[
+              ["外壁", "シリコン塗装", "180㎡", "432,000円"],
+              ["足場", "くさび式足場", "210㎡", "189,000円"],
+              ["屋根", "高圧洗浄", "95㎡", "42,750円"],
+            ].map((row) => (
+              <div
+                key={row.join("-")}
+                className="grid grid-cols-[1fr_1.4fr_.8fr_1fr] gap-3 rounded-lg border border-white/10 bg-white/12 px-4 py-3 text-sm text-white"
+              >
+                {row.map((cell) => (
+                  <span key={cell}>{cell}</span>
+                ))}
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 rounded-lg border border-amber-300/30 bg-amber-200/15 p-3 text-sm text-amber-50">
+            業者指示事項: 北面の下地補修を先に確認。顧客向けPDFには非表示。
+          </div>
+        </div>
+      </div>
 
-          <p className="num mt-5 text-2xl font-bold tracking-wider text-slate-800">
-            00:18
-          </p>
-          <p className="mt-1 flex items-center gap-1.5 text-xs font-medium text-rose-500">
-            <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
-            録音中
-          </p>
-
-          {/* 波形 */}
-          <div className="mt-5 flex h-12 items-center gap-1">
-            {WAVE.map((h, i) => (
+      <div className="absolute bottom-8 right-8 hidden w-56 rounded-[2rem] border-[8px] border-slate-900 bg-slate-900 shadow-2xl md:block">
+        <div className="rounded-[1.35rem] bg-white p-4 text-slate-900">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold">録音中</span>
+            <span className="h-2 w-2 rounded-full bg-rose-500" />
+          </div>
+          <div className="my-6 flex justify-center">
+            <span className="flex h-20 w-20 items-center justify-center rounded-full bg-rose-500 text-white">
+              <Mic className="text-3xl" />
+            </span>
+          </div>
+          <div className="flex h-10 items-center justify-center gap-1">
+            {[12, 24, 18, 32, 16, 28, 36, 20, 14].map((h, i) => (
               <span
-                key={i}
-                className="w-1.5 rounded-full bg-brand-400"
-                style={{ height: `${h + 8}px` }}
+                key={`${h}-${i}`}
+                className="w-1.5 rounded-full bg-brand-500"
+                style={{ height: `${h}px` }}
               />
             ))}
           </div>
-        </div>
-
-        {/* 解析中のヒント */}
-        <div className="mx-4 mb-5 flex items-center gap-2 rounded-xl bg-violet-50 px-3 py-2.5 text-xs text-violet-700 ring-1 ring-inset ring-violet-100">
-          <Sparkles className="shrink-0 text-sm" />
-          話し終えると、AIが明細を下書きします
+          <div className="mt-4 rounded-lg bg-violet-50 p-2 text-xs font-medium text-violet-700">
+            AIが明細候補を作成しています
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-/* ───────────────────────── 共通見出し ───────────────────────── */
+function HeroPoint({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex items-center gap-2">
+      <Check className="shrink-0 text-emerald-300" />
+      <span>{children}</span>
+    </div>
+  );
+}
 
 function SectionHeading({
   eyebrow,
   title,
   desc,
-  center = false,
+  center,
 }: {
   eyebrow: string;
   title: string;
@@ -209,54 +314,32 @@ function SectionHeading({
 }) {
   return (
     <div className={center ? "mx-auto max-w-2xl text-center" : "max-w-2xl"}>
-      <span className="text-xs font-bold uppercase tracking-wider text-brand-600">
-        {eyebrow}
-      </span>
-      <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
+      <p className="text-xs font-bold text-brand-700">{eyebrow}</p>
+      <h2 className="mt-2 text-2xl font-extrabold leading-tight text-slate-900 sm:text-3xl">
         {title}
       </h2>
-      {desc && (
-        <p className="mt-3 text-sm leading-relaxed text-slate-600 sm:text-base">
-          {desc}
-        </p>
-      )}
+      {desc && <p className="mt-3 text-sm leading-7 text-slate-600 sm:text-base">{desc}</p>}
     </div>
   );
 }
 
-/* ───────────────────────── 課題 ───────────────────────── */
-
-const PAINS = [
-  {
-    title: "事務所に戻ってから見積作成",
-    body: "現場で採寸して、夜に事務所でExcel入力。提出が翌日以降になり、失注につながることも。",
-  },
-  {
-    title: "単価をいちいち探して手入力",
-    body: "品目ごとに過去の単価表をめくって入力。転記ミスや単価の付け忘れが起きやすい。",
-  },
-  {
-    title: "業者向けメモの消し忘れ",
-    body: "社内・業者向けの指示を消し忘れたまま顧客に提出。価格の根拠や原価が漏れる不安。",
-  },
-];
-
-function Pain() {
+function Problem() {
   return (
-    <section className="bg-slate-50 py-16 sm:py-20">
+    <section id="problem" className="scroll-mt-20 bg-slate-50 py-16 sm:py-20">
       <div className="mx-auto max-w-6xl px-5">
         <SectionHeading
-          eyebrow="よくある課題"
-          title="こんな見積作成、していませんか？"
+          eyebrow="見積業務の課題"
+          title="見積が遅れる原因は、現場情報と単価情報が分かれていることです。"
+          desc="建設業の見積は、現場で聞いた内容、社内の単価表、業者への指示、顧客向けの表現が混ざりやすい業務です。"
         />
-        <div className="mt-10 grid gap-5 md:grid-cols-3">
-          {PAINS.map((p, i) => (
-            <div key={p.title} className="card p-6">
-              <span className="num flex h-9 w-9 items-center justify-center rounded-lg bg-rose-50 text-sm font-bold text-rose-600 ring-1 ring-inset ring-rose-100">
-                {i + 1}
-              </span>
-              <h3 className="mt-4 text-base font-bold text-slate-800">{p.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-slate-600">{p.body}</p>
+        <div className="mt-8 grid gap-4 md:grid-cols-3">
+          {PROBLEMS.map((item, index) => (
+            <div key={item.title} className="rounded-lg border border-slate-200 bg-white p-5">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-50 text-sm font-bold text-rose-700">
+                {index + 1}
+              </div>
+              <h3 className="mt-4 text-base font-bold text-slate-900">{item.title}</h3>
+              <p className="mt-2 text-sm leading-7 text-slate-600">{item.body}</p>
             </div>
           ))}
         </div>
@@ -264,89 +347,24 @@ function Pain() {
     </section>
   );
 }
-
-/* ───────────────────────── 機能 ───────────────────────── */
-
-const FEATURES = [
-  {
-    icon: <Mic className="text-xl" />,
-    tone: "brand",
-    title: "音声で入力",
-    body: "現場で話すだけ。推奨30秒〜2分の音声で、採寸メモや作業内容をそのまま記録できます。",
-  },
-  {
-    icon: <Sparkles className="text-xl" />,
-    tone: "violet",
-    title: "AIが明細を下書き",
-    body: "文字起こしから品目・数量・単位・単価を自動で構造化。単価マスターと自動で照合します。",
-  },
-  {
-    icon: <Spreadsheet className="text-xl" />,
-    tone: "emerald",
-    title: "Excel単価表を取込",
-    body: "お使いの単価表をアップロードして列をマッピング。プレビューとエラー確認つきで安全に取込。",
-  },
-  {
-    icon: <EyeOff className="text-xl" />,
-    tone: "amber",
-    title: "顧客 / 社内の情報を分離",
-    body: "業者指示事項は「PDF非表示」。顧客提出用の帳票には絶対に出力されない仕組みです。",
-    highlight: true,
-  },
-  {
-    icon: <FileText className="text-xl" />,
-    tone: "sky",
-    title: "PDF・Excelで出力",
-    body: "顧客提出用と、社内・業者指示用を1クリックで出し分け。用途を取り違えない設計です。",
-  },
-  {
-    icon: <Share className="text-xl" />,
-    tone: "brand",
-    title: "スマホで完結",
-    body: "録音から確認・共有まで現場のスマホでワンストップ。事務所のPCでも同じデータを編集できます。",
-  },
-];
-
-const TONES: Record<string, string> = {
-  brand: "bg-brand-50 text-brand-600 ring-brand-100",
-  violet: "bg-violet-50 text-violet-600 ring-violet-100",
-  emerald: "bg-emerald-50 text-emerald-600 ring-emerald-100",
-  amber: "bg-amber-50 text-amber-600 ring-amber-200",
-  sky: "bg-sky-50 text-sky-600 ring-sky-100",
-};
 
 function Features() {
   return (
     <section id="features" className="scroll-mt-20 py-16 sm:py-20">
       <div className="mx-auto max-w-6xl px-5">
         <SectionHeading
-          eyebrow="主な機能"
-          title="話すだけで、見積が形になる。"
-          desc="現場の作業を止めない、シンプルな機能だけを揃えました。"
+          eyebrow="主要機能"
+          title="音声、単価、出力の流れを見積業務に合わせてつなぎます。"
+          desc="AIに任せる部分と、人が確認する部分を分け、現場で使いやすい見積作成フローを目指します。"
         />
-        <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {FEATURES.map((f) => (
-            <div
-              key={f.title}
-              className={`card p-6 ${
-                f.highlight ? "ring-2 ring-amber-200" : ""
-              }`}
-            >
-              <span
-                className={`flex h-12 w-12 items-center justify-center rounded-xl ring-1 ring-inset ${TONES[f.tone]}`}
-              >
-                {f.icon}
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {FEATURES.map((feature) => (
+            <div key={feature.title} className="rounded-lg border border-slate-200 bg-white p-5">
+              <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
+                {feature.icon}
               </span>
-              <h3 className="mt-4 flex items-center gap-2 text-base font-bold text-slate-800">
-                {f.title}
-                {f.highlight && (
-                  <span className="tag-internal">
-                    <EyeOff className="text-[11px]" />
-                    重要
-                  </span>
-                )}
-              </h3>
-              <p className="mt-2 text-sm leading-relaxed text-slate-600">{f.body}</p>
+              <h3 className="mt-4 text-base font-bold text-slate-900">{feature.title}</h3>
+              <p className="mt-2 text-sm leading-7 text-slate-600">{feature.body}</p>
             </div>
           ))}
         </div>
@@ -355,52 +373,21 @@ function Features() {
   );
 }
 
-/* ───────────────────────── 使い方 ───────────────────────── */
-
-const STEPS = [
-  {
-    no: "01",
-    icon: <Mic className="text-xl" />,
-    title: "現場で話す",
-    body: "「外壁塗装、足場が約180平米、高圧洗浄して…」と話すだけ。テキスト入力にも対応。",
-  },
-  {
-    no: "02",
-    icon: <Sparkles className="text-xl" />,
-    title: "AIが下書き",
-    body: "音声を文字起こしし、明細候補を生成。単価マスターと照合して金額まで自動計算します。",
-  },
-  {
-    no: "03",
-    icon: <FileText className="text-xl" />,
-    title: "確認して出力",
-    body: "内容を確認・修正して確定。顧客提出用PDF、社内・業者指示用Excelをすぐに出力できます。",
-  },
-];
-
-function HowItWorks() {
+function Flow() {
   return (
-    <section id="how" className="scroll-mt-20 bg-slate-50 py-16 sm:py-20">
+    <section id="flow" className="scroll-mt-20 bg-slate-50 py-16 sm:py-20">
       <div className="mx-auto max-w-6xl px-5">
-        <SectionHeading eyebrow="使い方" title="3ステップで見積完成" />
-        <div className="mt-10 grid gap-5 md:grid-cols-3">
-          {STEPS.map((s, i) => (
-            <div key={s.no} className="relative">
-              <div className="card h-full p-6">
-                <div className="flex items-center justify-between">
-                  <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-600 text-white">
-                    {s.icon}
-                  </span>
-                  <span className="num text-3xl font-extrabold text-slate-200">
-                    {s.no}
-                  </span>
-                </div>
-                <h3 className="mt-4 text-base font-bold text-slate-800">{s.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-600">{s.body}</p>
-              </div>
-              {i < STEPS.length - 1 && (
-                <ChevronRight className="absolute -right-4 top-1/2 hidden -translate-y-1/2 text-2xl text-slate-300 md:block" />
-              )}
+        <SectionHeading
+          eyebrow="作成フロー"
+          title="見積ヘッダは手入力、明細だけをAIで支援します。"
+          desc="顧客情報や担当者などの重要なヘッダ情報はAIで埋めず、見積明細の下書き作成にAIを使います。"
+        />
+        <div className="mt-8 grid gap-4 lg:grid-cols-4">
+          {STEPS.map((step) => (
+            <div key={step.no} className="rounded-lg border border-slate-200 bg-white p-5">
+              <div className="text-sm font-bold text-brand-700">{step.no}</div>
+              <h3 className="mt-3 text-base font-bold text-slate-900">{step.title}</h3>
+              <p className="mt-2 text-sm leading-7 text-slate-600">{step.body}</p>
             </div>
           ))}
         </div>
@@ -409,134 +396,134 @@ function HowItWorks() {
   );
 }
 
-/* ─────────────────── 情報分離（最重要の差別化） ─────────────────── */
-
-function Separation() {
+function MasterImport() {
   return (
-    <section id="separation" className="scroll-mt-20 py-16 sm:py-20">
-      <div className="mx-auto grid max-w-6xl items-center gap-12 px-5 lg:grid-cols-2">
+    <section className="py-16 sm:py-20">
+      <div className="mx-auto grid max-w-6xl gap-10 px-5 lg:grid-cols-[1fr_1.1fr] lg:items-center">
         <div>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800 ring-1 ring-inset ring-amber-300">
-            <EyeOff className="text-sm" />
-            情報漏えいを防ぐ設計
-          </span>
-          <h2 className="mt-5 text-3xl font-extrabold leading-tight tracking-tight text-slate-900 sm:text-4xl">
-            業者指示事項は、
-            <br />
-            顧客向けPDFに
-            <span className="text-amber-600">絶対に出ません。</span>
-          </h2>
-          <p className="mt-5 text-base leading-relaxed text-slate-600">
-            「顧客に見せる情報」と「社内・業者だけの情報」を、入力画面・プレビュー・出力ダイアログの
-            すべてで色とラベルではっきり区別。原価や利益、業者への指示が、うっかり顧客に渡ることを防ぎます。
-          </p>
-          <ul className="mt-6 space-y-3 text-sm text-slate-700">
-            {[
-              "顧客提出用PDF・Excelには内部情報を一切出力しない",
-              "社内・業者指示用Excelだけに指示事項を出力",
-              "出力前に「含まれる情報」を必ず確認できる",
-            ].map((t) => (
-              <li key={t} className="flex items-start gap-2.5">
-                <Check className="mt-0.5 shrink-0 text-base text-emerald-500" />
-                {t}
-              </li>
-            ))}
-          </ul>
+          <SectionHeading
+            eyebrow="Excel単価表を活用"
+            title="今ある単価表を、AI見積の判断材料にします。"
+            desc="品目、単位、単価、外部品目IDを単価マスターとして整備。AIが音声から品目候補を推測し、単価マスターの候補を表示します。"
+          />
+          <div className="mt-6 flex flex-col gap-3">
+            <PlainCheck>列マッピングで既存Excelを取り込み</PlainCheck>
+            <PlainCheck>プレビューで重複や単価不正を確認</PlainCheck>
+            <PlainCheck>外部システム連携用の独自IDを保持</PlainCheck>
+          </div>
         </div>
 
-        {/* 見積明細の分離イメージ */}
-        <div className="card overflow-hidden p-0">
-          <div className="border-b border-slate-100 px-5 py-3 text-sm font-bold text-slate-700">
-            見積明細（編集画面のイメージ）
+        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+          <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
+            <div className="flex items-center gap-2 font-bold text-slate-900">
+              <Upload className="text-brand-700" />
+              単価マスター取込
+            </div>
+            <span className="rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
+              128件確認済み
+            </span>
           </div>
-          <div className="space-y-3 p-5">
-            <SepRow
-              name="外壁塗装 シリコン塗装"
-              meta="180㎡ × 2,400円"
-              amount="432,000円"
-            />
-            <div className="rounded-xl bg-sky-50/70 p-3 ring-1 ring-inset ring-sky-100">
-              <span className="tag-customer">
-                <FileText className="text-[11px]" />
-                顧客に表示
-              </span>
-              <p className="mt-1.5 text-sm text-slate-700">
-                高耐久シリコン塗料を使用。色は打合せ時にご確認ください。
-              </p>
-            </div>
-            <div className="internal-surface p-3">
-              <span className="tag-internal">
-                <EyeOff className="text-[11px]" />
-                PDF非表示（社内・業者向け）
-              </span>
-              <p className="mt-1.5 text-sm text-slate-700">
-                原価1,600円/㎡。職人Aへ。北面は下地補修を優先。
-              </p>
-            </div>
-            <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2.5">
-              <span className="text-xs font-medium text-slate-500">
-                顧客向けPDFに出力されるのは
-              </span>
-              <span className="tag-customer">青色の項目のみ</span>
-            </div>
+          <div className="grid grid-cols-4 border-b border-slate-200 bg-slate-50 px-5 py-2 text-xs font-bold text-slate-500">
+            <span>品目</span>
+            <span>単位</span>
+            <span>単価</span>
+            <span>外部ID</span>
           </div>
+          {[
+            ["シリコン塗装", "㎡", "2,400", "PAINT-001"],
+            ["高圧洗浄", "㎡", "450", "WASH-012"],
+            ["くさび式足場", "㎡", "900", "SCAFF-004"],
+          ].map((row) => (
+            <div
+              key={row.join("-")}
+              className="grid grid-cols-4 border-b border-slate-100 px-5 py-3 text-sm text-slate-700 last:border-b-0"
+            >
+              {row.map((cell) => (
+                <span key={cell}>{cell}</span>
+              ))}
+            </div>
+          ))}
         </div>
       </div>
     </section>
   );
 }
 
-function SepRow({
-  name,
-  meta,
-  amount,
+function Security() {
+  return (
+    <section id="security" className="scroll-mt-20 bg-slate-950 py-16 text-white sm:py-20">
+      <div className="mx-auto grid max-w-6xl gap-10 px-5 lg:grid-cols-2 lg:items-center">
+        <div>
+          <p className="text-xs font-bold text-sky-200">安全設計</p>
+          <h2 className="mt-2 text-2xl font-extrabold leading-tight sm:text-3xl">
+            顧客向け情報と社内向け情報を、最初から分けて扱います。
+          </h2>
+          <p className="mt-4 text-sm leading-7 text-slate-200 sm:text-base">
+            会社別データ分離、業者指示事項の非表示制御、AI候補の人間確認を前提にした設計です。
+            見積業務のスピードだけでなく、情報漏れの不安を減らすことを重視します。
+          </p>
+        </div>
+
+        <div className="grid gap-3">
+          <SecurityRow
+            icon={<Building />}
+            title="会社別データ分離"
+            body="ログイン中の会社に紐づくデータだけを参照します。"
+          />
+          <SecurityRow
+            icon={<EyeOff />}
+            title="業者指示事項の出力制御"
+            body="PDFには出さず、Excelでは内部確認用として出力します。"
+          />
+          <SecurityRow
+            icon={<Search />}
+            title="AI候補は確認後に反映"
+            body="AI結果をそのまま確定せず、担当者の確認を通します。"
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SecurityRow({
+  icon,
+  title,
+  body,
 }: {
-  name: string;
-  meta: string;
-  amount: string;
+  icon: ReactNode;
+  title: string;
+  body: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3">
-      <div className="min-w-0">
-        <div className="truncate font-semibold text-slate-800">{name}</div>
-        <div className="num mt-0.5 text-xs text-slate-500">{meta}</div>
+    <div className="flex gap-4 rounded-lg border border-white/15 bg-white/10 p-4">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-brand-700">
+        {icon}
+      </span>
+      <div>
+        <h3 className="font-bold text-white">{title}</h3>
+        <p className="mt-1 text-sm leading-6 text-slate-200">{body}</p>
       </div>
-      <div className="num shrink-0 font-bold text-slate-800">{amount}</div>
     </div>
   );
 }
 
-/* ───────────────────────── 対象業種 ───────────────────────── */
-
-const INDUSTRIES = [
-  "外壁塗装",
-  "屋根塗装",
-  "防水工事",
-  "リフォーム",
-  "内装工事",
-  "外構・エクステリア",
-  "シーリング",
-  "足場",
-];
-
-function Industries() {
+function Faq() {
   return (
-    <section id="industries" className="scroll-mt-20 bg-slate-50 py-16 sm:py-20">
-      <div className="mx-auto max-w-4xl px-5 text-center">
+    <section id="faq" className="scroll-mt-20 py-16 sm:py-20">
+      <div className="mx-auto max-w-4xl px-5">
         <SectionHeading
-          eyebrow="対象業種"
-          title="現場で見積をつくる、すべての工事業に。"
-          desc="まずは外壁塗装・リフォーム系を中心に、品目テンプレートをご用意しています。"
+          eyebrow="FAQ"
+          title="よくある質問"
+          desc="導入前に確認されやすいポイントをまとめました。"
           center
         />
-        <div className="mt-8 flex flex-wrap justify-center gap-2.5">
-          {INDUSTRIES.map((t) => (
-            <span
-              key={t}
-              className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700"
-            >
-              {t}
-            </span>
+        <div className="mt-8 divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
+          {FAQS.map((faq) => (
+            <div key={faq.q} className="p-5">
+              <h3 className="font-bold text-slate-900">{faq.q}</h3>
+              <p className="mt-2 text-sm leading-7 text-slate-600">{faq.a}</p>
+            </div>
           ))}
         </div>
       </div>
@@ -544,41 +531,43 @@ function Industries() {
   );
 }
 
-/* ───────────────────────── CTA帯 ───────────────────────── */
-
-function CtaBand() {
+function FinalCta() {
   return (
-    <section className="px-5 py-16 sm:py-20">
-      <div className="relative mx-auto max-w-5xl overflow-hidden rounded-3xl bg-gradient-to-br from-brand-700 to-brand-900 px-6 py-14 text-center shadow-panel sm:px-12">
-        <span className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/10 blur-2xl" />
-        <span className="pointer-events-none absolute -bottom-20 -left-10 h-56 w-56 rounded-full bg-white/10 blur-2xl" />
-        <h2 className="relative text-2xl font-extrabold tracking-tight text-white sm:text-3xl">
-          今すぐ、現場で試してみませんか？
+    <section className="bg-slate-50 px-5 py-16 sm:py-20">
+      <div className="mx-auto max-w-4xl rounded-lg border border-slate-200 bg-white p-8 text-center sm:p-10">
+        <h2 className="text-2xl font-extrabold leading-tight text-slate-900 sm:text-3xl">
+          まずは、現場の見積フローに合うか確認しましょう。
         </h2>
-        <p className="relative mx-auto mt-3 max-w-xl text-sm leading-relaxed text-white/80 sm:text-base">
-          登録不要のデモで、音声入力からAI解析・出力までの流れをそのまま体験できます。
+        <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
+          単価マスター、音声入力、業者指示事項、Excel/PDF出力まで、実際の運用に合わせて確認できます。
         </p>
-        <div className="relative mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+        <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
+          <Link
+            href="/contact"
+            className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-lg bg-brand-600 px-6 text-base font-bold text-white hover:bg-brand-700"
+          >
+            導入相談をする
+          </Link>
           <Link
             href="/login"
-            className="btn h-12 bg-white px-7 text-base text-brand-700 hover:bg-brand-50"
+            className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-lg border border-slate-300 px-6 text-base font-bold text-slate-700 hover:bg-slate-50"
           >
-            無料で試す
-            <ChevronRight className="text-base" />
+            デモを試す
           </Link>
-          <a
-            href="#features"
-            className="btn h-12 border border-white/40 px-7 text-base text-white hover:bg-white/10"
-          >
-            機能をもう一度見る
-          </a>
         </div>
       </div>
     </section>
   );
 }
 
-/* ───────────────────────── フッター ───────────────────────── */
+function PlainCheck({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex items-start gap-2 text-sm leading-7 text-slate-700">
+      <Check className="mt-1 shrink-0 text-emerald-600" />
+      <span>{children}</span>
+    </div>
+  );
+}
 
 function SiteFooter() {
   return (
@@ -589,23 +578,17 @@ function SiteFooter() {
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-white">
               <Mic className="text-base" />
             </span>
-            <span className="font-bold tracking-tight">ボイス見積</span>
+            <span className="font-bold">ボイス見積</span>
           </div>
-          <p className="mt-2 text-xs text-slate-400">
-            音声AI見積作成システム（デモ版）
+          <p className="mt-2 text-xs text-slate-500">
+            建設業向け 音声AI見積作成システム
           </p>
         </div>
 
-        <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-600">
-          <a href="#features" className="hover:text-brand-700">
-            特徴
-          </a>
-          <a href="#how" className="hover:text-brand-700">
-            使い方
-          </a>
-          <a href="#separation" className="hover:text-brand-700">
-            情報分離
-          </a>
+        <nav className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-600">
+          <Link href="/blog" className="hover:text-brand-700">
+            お役立ち記事
+          </Link>
           <Link href="/contact" className="hover:text-brand-700">
             お問い合わせ
           </Link>
@@ -624,7 +607,7 @@ function SiteFooter() {
         </nav>
       </div>
       <div className="border-t border-slate-100 py-4 text-center text-xs text-slate-400">
-        © 2026 ボイス見積 — このページはデモ用のUIサンプルです。
+        © 2026 ボイス見積
       </div>
     </footer>
   );
