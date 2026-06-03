@@ -1,4 +1,4 @@
-﻿# 見積アプリ DB連携優先プラン
+# 見積アプリ DB連携優先プラン
 
 Last updated: 2026-06-03
 
@@ -23,7 +23,7 @@ Last updated: 2026-06-03
 | 1 | 見積保存/一覧取得 | `/api/estimates` と `estimate-repository.ts` 実装済み | Neon `DATABASE_URL` 設定後にE2E確認 |
 | 2 | AI候補の見積明細反映 | 採用候補を見積明細として保存・編集画面へ遷移できる | 実DB接続後にDB保存モードでE2E確認 |
 | 3 | 単価マスター | `/api/price-items` と一覧画面のDB読み込み/有効切替を実装済み | Neon `DATABASE_URL` 設定後にDBモードでE2E確認 |
-| 4 | 顧客情報 | `/api/customers`、顧客一覧、見積編集の顧客選択をDB接続済み | Neon `DATABASE_URL` 設定後にDBモードでE2E確認 |
+| 4 | 顧客情報 | `/api/customers`、顧客一覧、見積編集の顧客選択、追加/編集/ソフト削除をDB接続済み | 本番DBモードで顧客CRUDのE2E確認 |
 | 5 | インポート履歴 | `/api/import-jobs` と取り込み完了時の履歴記録を実装済み | Neon `DATABASE_URL` 設定後にDBモードでE2E確認 |
 | 6 | 出力履歴 | `/api/export-jobs` とCSV/PDF/TSV出力時の履歴記録を実装済み | Neon `DATABASE_URL` 設定後にDBモードでE2E確認 |
 
@@ -33,7 +33,7 @@ Last updated: 2026-06-03
 2. DB未接続でもlocalStorageで同じ操作感になるようにする。Done: 既存の保存ストア経由でlocalStorage fallback。
 3. `DATABASE_URL` 設定後、見積保存/一覧取得をDBモードで確認する。
 4. 単価マスターをDB保存へつなぐ。Done: 一覧取得と有効/無効切替をAPI経由化。
-5. 顧客情報をDB保存へつなぐ。Done: 一覧取得と見積編集の顧客選択をAPI経由化。
+5. 顧客情報をDB保存へつなぐ。Done: 一覧取得、見積編集の顧客選択、顧客の追加/編集/ソフト削除をAPI経由化。
 6. import/export履歴をDBへ残す。Done: 取り込み完了、CSV/PDF/TSV出力操作をAPI経由で履歴記録。
 7. 音声録音/文字起こしはユーザー検証後に接続する。
 

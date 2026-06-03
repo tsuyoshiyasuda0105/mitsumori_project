@@ -73,6 +73,8 @@ type DbCustomerRow = {
   memo: string | null;
 };
 
+type CustomerInput = Partial<Omit<Customer, "id">> & { id?: string };
+
 type DbPriceItemRow = {
   id: string;
   external_item_code: string | null;
@@ -140,6 +142,10 @@ function toNumber(value: string | number | null | undefined): number {
   if (typeof value === "number") return value;
   const parsed = Number(value ?? 0);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function toCleanString(value: string | null | undefined): string {
+  return value?.trim() ?? "";
 }
 
 function isUuid(value: string | null | undefined): value is string {
@@ -546,6 +552,125 @@ export async function listDbCustomers(): Promise<Customer[]> {
   return rows.map(mapCustomer);
 }
 
+function normalizeCustomerInput(input: CustomerInput): CustomerInput & { name: string } {
+  const name = toCleanString(input.name);
+  if (!name) {
+    throw new ApiInputError("顧客名を入力してください。", 422);
+  }
+
+  return {
+    id: toCleanString(input.id) || undefined,
+    name,
+    nameKana: toCleanString(input.nameKana),
+    postalCode: toCleanString(input.postalCode),
+    address: toCleanString(input.address),
+    phone: toCleanString(input.phone),
+    email: toCleanString(input.email),
+    contactName: toCleanString(input.contactName),
+    note: toCleanString(input.note),
+  };
+}
+
+export async function saveDbCustomer(input: CustomerInput): Promise<Customer> {
+  const customer = normalizeCustomerInput(input);
+  const sql = getSql();
+  const { tenantId } = await ensureBootstrap();
+  let rows: DbCustomerRow[] = [];
+
+  if (customer.id) {
+    rows = isUuid(customer.id)
+      ? ((await sql`
+          update customers
+          set
+            name = ${customer.name},
+            name_kana = ${customer.nameKana},
+            postal_code = ${customer.postalCode},
+            address = ${customer.address},
+            phone = ${customer.phone},
+            email = ${customer.email},
+            contact_name = ${customer.contactName},
+            memo = ${customer.note},
+            deleted_at = null
+          where tenant_id = ${tenantId} and id = ${customer.id}
+          returning id, external_customer_code, name, name_kana, postal_code, address, phone, email, contact_name, memo
+        `) as DbCustomerRow[])
+      : ((await sql`
+          update customers
+          set
+            name = ${customer.name},
+            name_kana = ${customer.nameKana},
+            postal_code = ${customer.postalCode},
+            address = ${customer.address},
+            phone = ${customer.phone},
+            email = ${customer.email},
+            contact_name = ${customer.contactName},
+            memo = ${customer.note},
+            deleted_at = null
+          where tenant_id = ${tenantId} and external_customer_code = ${customer.id}
+          returning id, external_customer_code, name, name_kana, postal_code, address, phone, email, contact_name, memo
+        `) as DbCustomerRow[]);
+  }
+
+  if (!rows[0]) {
+    rows = (await sql`
+      insert into customers (
+        tenant_id,
+        external_customer_code,
+        name,
+        name_kana,
+        postal_code,
+        address,
+        phone,
+        email,
+        contact_name,
+        memo
+      ) values (
+        ${tenantId},
+        ${customer.id && !isUuid(customer.id) ? customer.id : null},
+        ${customer.name},
+        ${customer.nameKana},
+        ${customer.postalCode},
+        ${customer.address},
+        ${customer.phone},
+        ${customer.email},
+        ${customer.contactName},
+        ${customer.note}
+      )
+      returning id, external_customer_code, name, name_kana, postal_code, address, phone, email, contact_name, memo
+    `) as DbCustomerRow[];
+  }
+
+  return mapCustomer(rows[0]);
+}
+
+export async function deleteDbCustomer(customerId: string): Promise<{ id: string }> {
+  const cleanId = toCleanString(customerId);
+  if (!cleanId) throw new ApiInputError("customerId is required", 400);
+
+  const sql = getSql();
+  const { tenantId } = await ensureBootstrap();
+
+  const rows = isUuid(cleanId)
+    ? ((await sql`
+        update customers
+        set deleted_at = now()
+        where tenant_id = ${tenantId} and id = ${cleanId}
+        returning id, external_customer_code
+      `) as Array<{ id: string; external_customer_code: string | null }> )
+    : ((await sql`
+        update customers
+        set deleted_at = now()
+        where tenant_id = ${tenantId} and external_customer_code = ${cleanId}
+        returning id, external_customer_code
+      `) as Array<{ id: string; external_customer_code: string | null }> );
+
+  const row = rows[0];
+  if (!row) {
+    throw new ApiInputError("選択された顧客が見つかりません。", 404, "NOT_FOUND");
+  }
+
+  return { id: row.external_customer_code ?? row.id };
+}
 export async function listDbPriceItems(): Promise<PriceItem[]> {
   const sql = getSql();
   const { tenantId } = await ensureBootstrap();
