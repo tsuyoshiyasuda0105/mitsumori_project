@@ -28,6 +28,8 @@ export default function Page({ params }: { params: { id: string } }) {
   const internalRows = buildExportRows(estimate, "internal");
   const [audience, setAudience] = useState<ExportAudience>("internal");
   const [copied, setCopied] = useState<string | null>(null);
+  const [historyStatus, setHistoryStatus] = useState<string | null>(null);
+  const [historyError, setHistoryError] = useState<string | null>(null);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
   const tsvText = useMemo(
@@ -38,6 +40,47 @@ export default function Page({ params }: { params: { id: string } }) {
     () => buildCopySummary(estimate, customer),
     [customer, estimate],
   );
+
+  const recordExportHistory = async (
+    exportType: "excel" | "pdf" | "csv",
+    exportMode: "customer" | "internal" | "integration",
+    result: Record<string, unknown>,
+  ) => {
+    try {
+      const response = await fetch("/api/export-jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          estimateId: estimate.id,
+          exportType,
+          exportMode,
+          result: {
+            estimateNo: estimate.estimateNo,
+            title: estimate.title,
+            ...result,
+          },
+        }),
+      });
+      const payload = (await response.json()) as {
+        mode?: "database" | "local";
+        error?: { message?: string };
+      };
+      if (!response.ok) {
+        throw new Error(payload.error?.message ?? "出力履歴を保存できませんでした。");
+      }
+      setHistoryStatus(
+        payload.mode === "database"
+          ? "DBに出力履歴を保存しました。"
+          : "DB未接続のため、今回は画面上の出力記録のみです。",
+      );
+      setHistoryError(null);
+    } catch (error) {
+      setHistoryStatus(null);
+      setHistoryError(
+        error instanceof Error ? error.message : "出力履歴の保存に失敗しました。",
+      );
+    }
+  };
 
   const copyText = async (text: string, label: string) => {
     try {
@@ -54,10 +97,20 @@ export default function Page({ params }: { params: { id: string } }) {
       textarea.remove();
     }
     setCopied(label);
+    if (label === "tsv") {
+      void recordExportHistory("excel", audience, {
+        action: "copy_tsv",
+        rowCount: estimate.lines.length,
+      });
+    }
     window.setTimeout(() => setCopied(null), 1800);
   };
 
   const downloadCsv = () => {
+    void recordExportHistory("csv", audience, {
+      action: "download_csv",
+      rowCount: estimate.lines.length,
+    });
     const csv = buildCsvText(estimate, audience, customer);
     const bom = new Uint8Array([0xef, 0xbb, 0xbf]);
     const blob = new Blob([bom, csv], { type: "text/csv;charset=utf-8" });
@@ -72,6 +125,10 @@ export default function Page({ params }: { params: { id: string } }) {
   };
 
   const printCustomerPreview = () => {
+    void recordExportHistory("pdf", "customer", {
+      action: "print_or_save_pdf",
+      total: totals.total,
+    });
     const currentTitle = document.title;
     document.title = printTitle;
     window.print();
@@ -262,6 +319,17 @@ export default function Page({ params }: { params: { id: string } }) {
             {copied && (
               <p className="mt-2 text-center text-sm font-semibold text-emerald-600">
                 {copied === "summary" ? "サマリー" : "TSV"}をコピーしました。
+              </p>
+            )}
+            {(historyStatus || historyError) && (
+              <p
+                className={`mt-2 rounded-xl px-3 py-2 text-center text-xs font-semibold ${
+                  historyError
+                    ? "bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-200"
+                    : "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200"
+                }`}
+              >
+                {historyError ?? historyStatus}
               </p>
             )}
           </section>

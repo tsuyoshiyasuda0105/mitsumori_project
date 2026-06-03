@@ -82,6 +82,48 @@ type DbPriceItemRow = {
   is_active: boolean;
 };
 
+type DbImportJobRow = {
+  id: string;
+  job_type: string;
+  status: string;
+  mapping_json: unknown;
+  result_json: unknown;
+  error_message: string | null;
+  created_at: string | Date;
+};
+
+type DbExportJobRow = {
+  id: string;
+  estimate_id: string;
+  export_type: string;
+  export_mode: string;
+  status: string;
+  result_json: unknown;
+  error_message: string | null;
+  created_at: string | Date;
+};
+
+export interface ImportJobRecord {
+  id: string;
+  jobType: string;
+  status: string;
+  mapping: unknown;
+  result: unknown;
+  errorMessage?: string;
+  createdAt: string;
+}
+
+export interface ExportJobRecord {
+  id: string;
+  estimateId: string;
+  exportType: string;
+  exportMode: string;
+  status: string;
+  result: unknown;
+  errorMessage?: string;
+  createdAt: string;
+}
+
 function toIsoDate(value: string | Date | null | undefined): string {
   if (!value) return "";
   if (value instanceof Date) return value.toISOString().slice(0, 10);
@@ -347,6 +389,31 @@ function mapPriceItem(row: DbPriceItemRow): PriceItem {
   };
 }
 
+function mapImportJob(row: DbImportJobRow): ImportJobRecord {
+  return {
+    id: row.id,
+    jobType: row.job_type,
+    status: row.status,
+    mapping: row.mapping_json,
+    result: row.result_json,
+    errorMessage: row.error_message ?? undefined,
+    createdAt: toIsoDateTime(row.created_at),
+  };
+}
+
+function mapExportJob(row: DbExportJobRow): ExportJobRecord {
+  return {
+    id: row.id,
+    estimateId: row.estimate_id,
+    exportType: row.export_type,
+    exportMode: row.export_mode,
+    status: row.status,
+    result: row.result_json,
+    errorMessage: row.error_message ?? undefined,
+    createdAt: toIsoDateTime(row.created_at),
+  };
+}
+
 function mapEstimate(row: DbEstimateRow, lines: EstimateLine[]): Estimate {
   return {
     id: row.id,
@@ -527,6 +594,133 @@ export async function updateDbPriceItemActive(
   }
 
   return mapPriceItem(row);
+}
+
+export async function listDbImportJobs(limit = 20): Promise<ImportJobRecord[]> {
+  const sql = getSql();
+  const { tenantId } = await ensureBootstrap();
+
+  const rows = (await sql`
+    select
+      id,
+      job_type,
+      status,
+      mapping_json,
+      result_json,
+      error_message,
+      created_at
+    from import_jobs
+    where tenant_id = ${tenantId}
+    order by created_at desc
+    limit ${limit}
+  `) as DbImportJobRow[];
+
+  return rows.map(mapImportJob);
+}
+
+export async function recordDbImportJob(input: {
+  status?: "uploaded" | "mapped" | "validated" | "imported" | "failed";
+  mapping?: unknown;
+  result?: unknown;
+  errorMessage?: string;
+}): Promise<ImportJobRecord> {
+  const sql = getSql();
+  const { tenantId, userId } = await ensureBootstrap();
+  const status = input.status ?? "imported";
+  const mappingJson = JSON.stringify(input.mapping ?? {});
+  const resultJson = JSON.stringify(input.result ?? {});
+
+  const rows = (await sql`
+    insert into import_jobs (
+      tenant_id,
+      job_type,
+      status,
+      mapping_json,
+      result_json,
+      error_message,
+      created_by_user_id
+    ) values (
+      ${tenantId},
+      'price_items_excel',
+      ${status},
+      ${mappingJson}::jsonb,
+      ${resultJson}::jsonb,
+      ${input.errorMessage ?? null},
+      ${userId}
+    )
+    returning id, job_type, status, mapping_json, result_json, error_message, created_at
+  `) as DbImportJobRow[];
+
+  return mapImportJob(rows[0]);
+}
+
+export async function listDbExportJobs(
+  estimateId: string,
+  limit = 20,
+): Promise<ExportJobRecord[]> {
+  if (!isUuid(estimateId)) return [];
+
+  const sql = getSql();
+  const { tenantId } = await ensureBootstrap();
+
+  const rows = (await sql`
+    select
+      id,
+      estimate_id,
+      export_type,
+      export_mode,
+      status,
+      result_json,
+      error_message,
+      created_at
+    from export_jobs
+    where tenant_id = ${tenantId}
+      and estimate_id = ${estimateId}
+    order by created_at desc
+    limit ${limit}
+  `) as DbExportJobRow[];
+
+  return rows.map(mapExportJob);
+}
+
+export async function recordDbExportJob(input: {
+  estimateId: string;
+  exportType: "excel" | "pdf" | "csv";
+  exportMode: "customer" | "internal" | "integration";
+  status?: "queued" | "processing" | "completed" | "failed";
+  result?: unknown;
+  errorMessage?: string;
+}): Promise<ExportJobRecord | null> {
+  if (!isUuid(input.estimateId)) return null;
+
+  const sql = getSql();
+  const { tenantId, userId } = await ensureBootstrap();
+  const resultJson = JSON.stringify(input.result ?? {});
+
+  const rows = (await sql`
+    insert into export_jobs (
+      tenant_id,
+      estimate_id,
+      export_type,
+      export_mode,
+      status,
+      result_json,
+      error_message,
+      created_by_user_id
+    ) values (
+      ${tenantId},
+      ${input.estimateId},
+      ${input.exportType},
+      ${input.exportMode},
+      ${input.status ?? "completed"},
+      ${resultJson}::jsonb,
+      ${input.errorMessage ?? null},
+      ${userId}
+    )
+    returning id, estimate_id, export_type, export_mode, status, result_json, error_message, created_at
+  `) as DbExportJobRow[];
+
+  return mapExportJob(rows[0]);
 }
 
 function normalizeLineForDb(line: EstimateLine, index: number): EstimateLine {

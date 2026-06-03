@@ -11,7 +11,7 @@ Last updated: 2026-06-03 21:57 JST
 | レーン | 状態 | ブロッカー | 成果物 |
 | --- | --- | --- | --- |
 | note投稿準備 | 投稿前準備完了 | noteログイン/投稿はユーザー操作が必要 | `marketing/note/02_reform_construction_estimate_ai_note.md`, `marketing/note/README.md`, `marketing/note/assets/note-thumbnail-reform-construction-ai.png` |
-| 見積アプリDB連携 | 見積保存API、AI候補の明細反映、単価マスターAPI/一覧DB接続、顧客API/一覧DB接続は実装済み。音声以外はDB連携を本線にする | Neon `DATABASE_URL` 待ち。履歴系DB接続はDB接続前に設計可能 | `web/app/api/customers/route.ts`, `web/lib/customer-store.ts`, `web/components/lists/CustomerList.tsx`, `web/app/api/price-items/route.ts`, `web/components/focus/AiReview.tsx` |
+| 見積アプリDB連携 | 見積保存API、AI候補の明細反映、単価マスターAPI、顧客API、import/export履歴APIは実装済み。音声以外はDB連携を本線にする | Neon `DATABASE_URL` 待ち。DBモードE2E確認は接続後 | `web/app/api/import-jobs/route.ts`, `web/app/api/export-jobs/route.ts`, `web/app/api/customers/route.ts`, `web/app/api/price-items/route.ts`, `web/components/focus/AiReview.tsx` |
 | お問い合わせページ | 実装・本番デプロイ済み | 通知先Webhook未設定。メールアドレスは非表示 | `web/app/(site)/contact/page.tsx`, `web/components/marketing/ContactForm.tsx`, `web/app/api/contact/route.ts` |
 | Neon/Vercel接続準備 | 手順書作成済み | Neon `DATABASE_URL` はユーザー待ち | `docs/31_neon_vercel_connection_runbook.md` |
 | SEO/マーケ素材 | 記事・note・サムネ準備済み | note公開はユーザー操作待ち | `marketing/note/` |

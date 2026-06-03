@@ -87,6 +87,9 @@ export function ImportWizard() {
     "overwrite",
   );
   const [filter, setFilter] = useState<"all" | RowStatus>("all");
+  const [isRecordingHistory, setIsRecordingHistory] = useState(false);
+  const [historyStatus, setHistoryStatus] = useState<string | null>(null);
+  const [historyError, setHistoryError] = useState<string | null>(null);
 
   const counts = {
     ok: PREVIEW.filter((r) => r.status === "ok").length,
@@ -97,6 +100,49 @@ export function ImportWizard() {
 
   const next = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
   const back = () => setStep((s) => Math.max(s - 1, 0));
+  const executeImport = async () => {
+    setIsRecordingHistory(true);
+    setHistoryError(null);
+    try {
+      const response = await fetch("/api/import-jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "imported",
+          mapping,
+          result: {
+            fileName,
+            sheet,
+            dupMode,
+            counts,
+            importable,
+            skipped: counts.error,
+          },
+        }),
+      });
+      const payload = (await response.json()) as {
+        mode?: "database" | "local";
+        error?: { message?: string };
+      };
+      if (!response.ok) {
+        throw new Error(payload.error?.message ?? "インポート履歴を保存できませんでした。");
+      }
+      setHistoryStatus(
+        payload.mode === "database"
+          ? "DBにインポート履歴を保存しました。"
+          : "DB未接続のため、今回は画面上の完了記録のみです。",
+      );
+    } catch (error) {
+      setHistoryError(
+        error instanceof Error
+          ? error.message
+          : "インポート履歴の保存に失敗しました。",
+      );
+    } finally {
+      setIsRecordingHistory(false);
+      setStep(5);
+    }
+  };
 
   return (
     <div>
@@ -134,7 +180,14 @@ export function ImportWizard() {
             importable={importable}
           />
         )}
-        {step === 5 && <ResultStep counts={counts} importable={importable} />}
+        {step === 5 && (
+          <ResultStep
+            counts={counts}
+            importable={importable}
+            historyStatus={historyStatus}
+            historyError={historyError}
+          />
+        )}
       </div>
 
       {/* ステップ操作 */}
@@ -148,11 +201,15 @@ export function ImportWizard() {
             戻る
           </button>
           <button
-            onClick={next}
-            disabled={step === 0 && !fileName}
+            onClick={step === 4 ? executeImport : next}
+            disabled={(step === 0 && !fileName) || isRecordingHistory}
             className="btn-primary disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {step === 4 ? "取り込みを実行" : "次へ"}
+            {isRecordingHistory
+              ? "履歴保存中..."
+              : step === 4
+                ? "取り込みを実行"
+                : "次へ"}
           </button>
         </div>
       )}
@@ -511,9 +568,13 @@ function SettingsStep({
 function ResultStep({
   counts,
   importable,
+  historyStatus,
+  historyError,
 }: {
   counts: { ok: number; warn: number; error: number };
   importable: number;
+  historyStatus: string | null;
+  historyError: string | null;
 }) {
   return (
     <div className="text-center">
@@ -528,6 +589,17 @@ function ResultStep({
         <CountTile label="警告" value={counts.warn} tone="amber" />
         <CountTile label="失敗" value={counts.error} tone="rose" />
       </div>
+      {(historyStatus || historyError) && (
+        <p
+          className={`mx-auto mt-3 max-w-sm rounded-xl px-3 py-2 text-sm font-semibold ${
+            historyError
+              ? "bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-200"
+              : "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200"
+          }`}
+        >
+          {historyError ?? historyStatus}
+        </p>
+      )}
       {counts.error > 0 && (
         <button className="mx-auto mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700 hover:underline">
           <Download className="text-sm" />
