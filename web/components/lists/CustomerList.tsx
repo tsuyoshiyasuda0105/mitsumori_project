@@ -4,10 +4,13 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { FileText, Search, Users } from "@/components/icons";
 import { EmptyState, PageHeader } from "@/components/ui";
-import { customers, estimates } from "@/lib/mock";
+import { useCustomerStore } from "@/lib/customer-store";
+import { useEstimateStore } from "@/lib/estimate-store";
 
 export function CustomerList() {
   const [q, setQ] = useState("");
+  const { customers, backendMode, syncError } = useCustomerStore();
+  const { estimates } = useEstimateStore();
 
   const rows = useMemo(() => {
     const kw = q.trim().toLowerCase();
@@ -18,7 +21,7 @@ export function CustomerList() {
         .toLowerCase()
         .includes(kw),
     );
-  }, [q]);
+  }, [q, customers]);
 
   const countFor = (id: string) =>
     estimates.filter((e) => e.customerId === id).length;
@@ -40,6 +43,29 @@ export function CustomerList() {
           placeholder="顧客名・住所・電話番号・担当者で検索"
           className="field-input pl-10"
         />
+      </div>
+
+      <div className="mb-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span>
+            保存先:{" "}
+            <strong className="text-slate-800">
+              {backendMode === "database"
+                ? "データベース"
+                : backendMode === "local"
+                  ? "デモ用顧客"
+                  : "確認中"}
+            </strong>
+          </span>
+          <span className="text-xs text-slate-400">
+            {customers.length} 件の顧客を読み込み済み
+          </span>
+        </div>
+        {syncError && (
+          <p className="mt-2 text-xs text-amber-700">
+            DB接続前のため、画面上はデモ用顧客で動作しています。{syncError}
+          </p>
+        )}
       </div>
 
       {rows.length === 0 ? (

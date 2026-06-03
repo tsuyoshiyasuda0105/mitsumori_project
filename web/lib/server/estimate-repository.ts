@@ -1,6 +1,13 @@
 import { computeTotals } from "@/lib/calc";
 import { company, currentUser, customers, priceItems } from "@/lib/mock";
-import type { Estimate, EstimateLine, EstimateStatus, LineType, PriceItem } from "@/lib/types";
+import type {
+  Customer,
+  Estimate,
+  EstimateLine,
+  EstimateStatus,
+  LineType,
+  PriceItem,
+} from "@/lib/types";
 import { getSql } from "./db";
 
 const PLACEHOLDER_NO = "（保存時に自動採番）";
@@ -51,6 +58,19 @@ type DbLineRow = {
   unit_price: string | number;
   remarks: string | null;
   vendor_instructions: string | null;
+};
+
+type DbCustomerRow = {
+  id: string;
+  external_customer_code: string | null;
+  name: string;
+  name_kana: string | null;
+  postal_code: string | null;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
+  contact_name: string | null;
+  memo: string | null;
 };
 
 type DbPriceItemRow = {
@@ -303,6 +323,20 @@ function mapLine(row: DbLineRow): EstimateLine {
   };
 }
 
+function mapCustomer(row: DbCustomerRow): Customer {
+  return {
+    id: row.external_customer_code ?? row.id,
+    name: row.name,
+    nameKana: row.name_kana ?? "",
+    postalCode: row.postal_code ?? "",
+    address: row.address ?? "",
+    phone: row.phone ?? "",
+    email: row.email ?? "",
+    contactName: row.contact_name ?? "",
+    note: row.memo ?? "",
+  };
+}
+
 function mapPriceItem(row: DbPriceItemRow): PriceItem {
   return {
     id: row.external_item_code ?? row.id,
@@ -416,6 +450,31 @@ export async function listDbEstimates(): Promise<Estimate[]> {
     estimates.push(mapEstimate(row, await loadLines(sql, tenantId, row.id)));
   }
   return estimates;
+}
+
+export async function listDbCustomers(): Promise<Customer[]> {
+  const sql = getSql();
+  const { tenantId } = await ensureBootstrap();
+
+  const rows = (await sql`
+    select
+      id,
+      external_customer_code,
+      name,
+      name_kana,
+      postal_code,
+      address,
+      phone,
+      email,
+      contact_name,
+      memo
+    from customers
+    where tenant_id = ${tenantId}
+      and deleted_at is null
+    order by name asc
+  `) as DbCustomerRow[];
+
+  return rows.map(mapCustomer);
 }
 
 export async function listDbPriceItems(): Promise<PriceItem[]> {

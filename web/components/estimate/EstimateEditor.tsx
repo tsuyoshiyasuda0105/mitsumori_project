@@ -24,9 +24,10 @@ import {
   StatusBadge,
 } from "@/components/ui";
 import { computeTotals, lineAmount, TAX_RATE } from "@/lib/calc";
+import { useCustomerStore } from "@/lib/customer-store";
 import { useEstimateStore } from "@/lib/estimate-store";
 import { fmtDate, yen } from "@/lib/format";
-import { customers, priceItems } from "@/lib/mock";
+import { priceItems } from "@/lib/mock";
 import type {
   Estimate,
   EstimateLine,
@@ -69,6 +70,11 @@ export function EstimateEditor({
 }) {
   const router = useRouter();
   const { ready, getEstimate, saveEstimate } = useEstimateStore();
+  const {
+    customers,
+    backendMode: customerBackendMode,
+    syncError: customerSyncError,
+  } = useCustomerStore();
   const [currentId, setCurrentId] = useState(initial.id);
   const [estimateNo, setEstimateNo] = useState(initial.estimateNo);
   const [localIsNew, setLocalIsNew] = useState(isNew);
@@ -253,7 +259,16 @@ export function EstimateEditor({
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="sm:col-span-2">
-                <label className="field-label">顧客</label>
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <label className="field-label mb-0">顧客</label>
+                  <span className="text-xs text-slate-400">
+                    {customerBackendMode === "database"
+                      ? "DB顧客"
+                      : customerBackendMode === "local"
+                        ? "デモ顧客"
+                        : "顧客確認中"}
+                  </span>
+                </div>
                 <select
                   className={`field-input ${noCustomer ? "border-amber-300 text-amber-700" : ""}`}
                   value={customerId}
@@ -267,8 +282,13 @@ export function EstimateEditor({
                     <option key={c.id} value={c.id}>
                       {c.name}
                     </option>
-                  ))}
+                    ))}
                 </select>
+                {customerSyncError && (
+                  <p className="mt-1 text-xs text-amber-700">
+                    DB接続前のため、デモ用顧客で選択しています。
+                  </p>
+                )}
               </div>
               <div className="sm:col-span-2">
                 <label className="field-label">件名</label>
