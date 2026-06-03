@@ -27,12 +27,13 @@ import { computeTotals, lineAmount, TAX_RATE } from "@/lib/calc";
 import { useCustomerStore } from "@/lib/customer-store";
 import { useEstimateStore } from "@/lib/estimate-store";
 import { fmtDate, yen } from "@/lib/format";
-import { priceItems } from "@/lib/mock";
+import { priceItems as mockPriceItems } from "@/lib/mock";
 import type {
   Estimate,
   EstimateLine,
   EstimateStatus,
   LineType,
+  PriceItem,
 } from "@/lib/types";
 import { LINE_TYPE_LABEL, STATUS_LABEL } from "@/lib/types";
 
@@ -51,8 +52,16 @@ function newLine(type: LineType, lineNo: number): EstimateLine {
   };
 }
 
-function patchFromPriceItemName(name: string): Partial<EstimateLine> {
-  const item = priceItems.find((candidate) => candidate.name === name);
+interface PriceItemListResponse {
+  data?: PriceItem[] | null;
+  mode?: "database" | "local";
+}
+
+function patchFromPriceItemName(
+  name: string,
+  sourceItems: PriceItem[],
+): Partial<EstimateLine> {
+  const item = sourceItems.find((candidate) => candidate.name === name);
   if (!item) return { itemName: name, priceItemId: undefined };
   return {
     priceItemId: item.id,
@@ -95,6 +104,9 @@ export function EstimateEditor({
   );
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [availablePriceItems, setAvailablePriceItems] = useState<PriceItem[]>(
+    mockPriceItems,
+  );
 
   const applyEstimate = (estimate: Estimate) => {
     setCurrentId(estimate.id);
@@ -118,6 +130,26 @@ export function EstimateEditor({
     setLocalIsNew(false);
     setSavedAt("保存済み");
   }, [ready, getEstimate, initial.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadPriceItems() {
+      try {
+        const response = await fetch("/api/price-items", { cache: "no-store" });
+        const payload = (await response.json()) as PriceItemListResponse;
+        if (cancelled || !response.ok || payload.mode !== "database" || !payload.data) return;
+        setAvailablePriceItems(payload.data.filter((item) => item.isActive));
+      } catch {
+        // DB未接続時はデモ単価を使い、見積編集を止めない。
+      }
+    }
+
+    loadPriceItems();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const renumber = (arr: EstimateLine[]) =>
     arr.map((l, i) => ({ ...l, lineNo: i + 1 }));
@@ -206,7 +238,7 @@ export function EstimateEditor({
   return (
     <div>
       <datalist id="price-item-options">
-        {priceItems.map((item) => (
+        {availablePriceItems.map((item) => (
           <option key={item.id} value={item.name} label={`${yen(item.unitPrice)} / ${item.unit}`} />
         ))}
       </datalist>
@@ -424,6 +456,7 @@ export function EstimateEditor({
                           last={idx === lines.length - 1}
                           expanded={expanded.has(line.id)}
                           onToggle={() => toggleExpand(line.id)}
+                          priceItems={availablePriceItems}
                           onChange={(p) => updateLine(line.id, p)}
                           onMove={(d) => moveLine(idx, d)}
                           onRemove={() => removeLine(line.id)}
@@ -441,6 +474,7 @@ export function EstimateEditor({
                       line={line}
                       index={idx}
                       total={lines.length}
+                      priceItems={availablePriceItems}
                       onChange={(p) => updateLine(line.id, p)}
                       onMove={(d) => moveLine(idx, d)}
                       onRemove={() => removeLine(line.id)}
@@ -564,9 +598,7 @@ function Row({
   return (
     <div className="flex items-center justify-between">
       <dt className="text-slate-500">{label}</dt>
-      <dd
-        className={`num font-semibold ${tone === "rose" ? "text-rose-600" : "text-slate-800"}`}
-      >
+      <dd className={`num font-semibold ${tone === "rose" ? "text-rose-600" : "text-slate-800"}`}>
         {value}
       </dd>
     </div>
@@ -606,6 +638,7 @@ function LineTableRow({
   last,
   expanded,
   onToggle,
+  priceItems,
   onChange,
   onMove,
   onRemove,
@@ -615,6 +648,7 @@ function LineTableRow({
   last: boolean;
   expanded: boolean;
   onToggle: () => void;
+  priceItems: PriceItem[];
   onChange: (p: Partial<EstimateLine>) => void;
   onMove: (d: -1 | 1) => void;
   onRemove: () => void;
@@ -669,7 +703,7 @@ function LineTableRow({
             value={line.itemName}
             list="price-item-options"
             placeholder="品目"
-            onChange={(e) => onChange(patchFromPriceItemName(e.target.value))}
+            onChange={(e) => onChange(patchFromPriceItemName(e.target.value, priceItems))}
           />
         </td>
         <td className="px-1 py-1.5">
@@ -777,6 +811,7 @@ function LineCard({
   line,
   index,
   total,
+  priceItems,
   onChange,
   onMove,
   onRemove,
@@ -784,6 +819,7 @@ function LineCard({
   line: EstimateLine;
   index: number;
   total: number;
+  priceItems: PriceItem[];
   onChange: (p: Partial<EstimateLine>) => void;
   onMove: (d: -1 | 1) => void;
   onRemove: () => void;
@@ -845,7 +881,7 @@ function LineCard({
             className="field-input font-medium"
             value={line.itemName}
             list="price-item-options"
-            onChange={(e) => onChange(patchFromPriceItemName(e.target.value))}
+            onChange={(e) => onChange(patchFromPriceItemName(e.target.value, priceItems))}
           />
         </div>
         <div>
