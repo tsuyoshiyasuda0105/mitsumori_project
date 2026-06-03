@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import type { Estimate } from "@/lib/types";
 import { isDatabaseConfigured } from "@/lib/server/db";
-import { ApiInputError, listDbEstimates, saveDbEstimate } from "@/lib/server/estimate-repository";
+import {
+  ApiInputError,
+  deleteDbEstimate,
+  listDbEstimates,
+  saveDbEstimate,
+} from "@/lib/server/estimate-repository";
 
 export const dynamic = "force-dynamic";
 
@@ -64,6 +69,29 @@ export async function POST(request: Request) {
 
     const saved = await saveDbEstimate(body.estimate);
     return NextResponse.json({ data: saved, mode: "database" }, { status: 201 });
+  } catch (error) {
+    return handleError(error);
+  }
+}
+
+export async function DELETE(request: Request) {
+  if (!isDatabaseConfigured()) return unavailable();
+
+  try {
+    const { searchParams } = new URL(request.url);
+    let estimateId = searchParams.get("estimateId") ?? "";
+
+    if (!estimateId) {
+      try {
+        const body = (await request.json()) as { estimateId?: string };
+        estimateId = body.estimateId ?? "";
+      } catch {
+        estimateId = "";
+      }
+    }
+
+    const deleted = await deleteDbEstimate(estimateId);
+    return NextResponse.json({ data: deleted, mode: "database" });
   } catch (error) {
     return handleError(error);
   }

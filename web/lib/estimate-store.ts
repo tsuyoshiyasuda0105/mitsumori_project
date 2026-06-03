@@ -27,6 +27,12 @@ interface EstimateSaveResponse {
   error?: { code: string; message: string };
 }
 
+interface EstimateDeleteResponse {
+  data?: { id: string };
+  mode?: "database" | "local";
+  error?: { code: string; message: string };
+}
+
 function cloneEstimate(estimate: Estimate): Estimate {
   return JSON.parse(JSON.stringify(estimate)) as Estimate;
 }
@@ -134,6 +140,17 @@ async function postDatabaseEstimate(estimate: Estimate): Promise<Estimate | null
   return payload.data;
 }
 
+async function deleteDatabaseEstimate(estimateId: string): Promise<boolean> {
+  const response = await fetch("/api/estimates", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ estimateId }),
+  });
+  const payload = (await response.json()) as EstimateDeleteResponse;
+  if (!response.ok) throw new Error(payload.error?.message ?? "見積を削除できませんでした。");
+  return payload.mode === "database";
+}
+
 export function useEstimateStore() {
   const [savedEstimates, setSavedEstimates] = useState<Estimate[]>([]);
   const [databaseEstimates, setDatabaseEstimates] = useState<Estimate[]>([]);
@@ -213,6 +230,26 @@ export function useEstimateStore() {
     [backendMode, saveLocalEstimate],
   );
 
+  const deleteEstimate = useCallback(
+    async (estimateId: string) => {
+      if (backendMode === "database") {
+        const deleted = await deleteDatabaseEstimate(estimateId);
+        if (deleted) {
+          setDatabaseEstimates((prev) => prev.filter((estimate) => estimate.id !== estimateId));
+          setSyncError(null);
+          return;
+        }
+      }
+
+      setSavedEstimates((prev) => {
+        const next = prev.filter((estimate) => estimate.id !== estimateId);
+        writeSavedEstimates(next);
+        return next;
+      });
+    },
+    [backendMode],
+  );
+
   const resetSavedEstimates = useCallback(() => {
     if (canUseStorage()) window.localStorage.removeItem(STORAGE_KEY);
     setSavedEstimates([]);
@@ -227,6 +264,7 @@ export function useEstimateStore() {
     localSavedEstimates: savedEstimates,
     getEstimate,
     saveEstimate,
+    deleteEstimate,
     resetSavedEstimates,
   };
 }

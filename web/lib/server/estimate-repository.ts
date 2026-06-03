@@ -993,6 +993,38 @@ function normalizeLineForDb(line: EstimateLine, index: number): EstimateLine {
   };
 }
 
+export async function deleteDbEstimate(estimateId: string): Promise<{ id: string }> {
+  if (!isUuid(estimateId)) {
+    throw new ApiInputError("保存済み見積ではありません。", 400);
+  }
+
+  const sql = getSql();
+  const { tenantId } = await ensureBootstrap();
+
+  const rows = (await sql`
+    update estimates
+    set deleted_at = now()
+    where tenant_id = ${tenantId}
+      and id = ${estimateId}
+      and deleted_at is null
+    returning id
+  `) as Array<{ id: string }>;
+
+  const row = rows[0];
+  if (!row) {
+    throw new ApiInputError("選択された見積が見つかりません。", 404, "NOT_FOUND");
+  }
+
+  await sql`
+    update estimate_lines
+    set deleted_at = now()
+    where tenant_id = ${tenantId}
+      and estimate_id = ${estimateId}
+      and deleted_at is null
+  `;
+
+  return { id: row.id };
+}
 export async function saveDbEstimate(estimate: Estimate): Promise<Estimate> {
   const sql = getSql();
   const { tenantId, userId } = await ensureBootstrap();

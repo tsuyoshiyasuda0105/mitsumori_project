@@ -24,7 +24,14 @@ const FILTERS: { id: Filter; label: string }[] = [
 export function EstimateList() {
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
-  const { ready, backendMode, syncError, estimates, savedEstimates, localSavedEstimates, resetSavedEstimates } = useEstimateStore();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const { ready, backendMode, syncError, estimates, savedEstimates, localSavedEstimates, deleteEstimate, resetSavedEstimates } = useEstimateStore();
+
+  const savedEstimateIds = useMemo(
+    () => new Set(savedEstimates.map((estimate) => estimate.id)),
+    [savedEstimates],
+  );
 
   const rows = useMemo(() => {
     const kw = q.trim().toLowerCase();
@@ -38,6 +45,20 @@ export function EstimateList() {
       );
     });
   }, [q, filter, estimates]);
+
+  const removeEstimate = async (estimateId: string, title: string) => {
+    if (!window.confirm(`${title || "この見積"} を削除しますか？`)) return;
+
+    setDeletingId(estimateId);
+    setActionError(null);
+    try {
+      await deleteEstimate(estimateId);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "見積を削除できませんでした。");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   return (
     <div>
@@ -53,6 +74,12 @@ export function EstimateList() {
           </Link>
         }
       />
+
+      {actionError && (
+        <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+          {actionError}
+        </div>
+      )}
 
       <div className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
         <span className="font-bold">保存機能:</span>
@@ -121,6 +148,7 @@ export function EstimateList() {
                   <th className="px-4 py-3">ステータス</th>
                   <th className="px-4 py-3">見積日</th>
                   <th className="px-4 py-3">担当者</th>
+                  <th className="px-4 py-3 text-right">操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -153,6 +181,21 @@ export function EstimateList() {
                         {fmtDate(e.estimateDate)}
                       </td>
                       <td className="px-4 py-3 text-slate-500">{e.assignee}</td>
+                      <td className="px-4 py-3 text-right">
+                        {savedEstimateIds.has(e.id) ? (
+                          <button
+                            type="button"
+                            onClick={() => removeEstimate(e.id, e.title)}
+                            disabled={deletingId === e.id}
+                            className="inline-flex items-center gap-1 text-sm font-semibold text-rose-600 hover:text-rose-700 disabled:opacity-50"
+                          >
+                            <Trash className="text-sm" />
+                            削除
+                          </button>
+                        ) : (
+                          <span className="text-xs font-semibold text-slate-300">デモ</span>
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
@@ -162,7 +205,20 @@ export function EstimateList() {
 
           <div className="space-y-3 lg:hidden">
             {rows.map((e) => (
-              <EstimateCard key={e.id} estimate={e} />
+              <div key={e.id} className="space-y-2">
+                <EstimateCard estimate={e} />
+                {savedEstimateIds.has(e.id) && (
+                  <button
+                    type="button"
+                    onClick={() => removeEstimate(e.id, e.title)}
+                    disabled={deletingId === e.id}
+                    className="btn-secondary w-full text-rose-700 disabled:opacity-50"
+                  >
+                    <Trash className="text-base" />
+                    削除
+                  </button>
+                )}
+              </div>
             ))}
           </div>
         </>
