@@ -1,30 +1,120 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search, Spreadsheet, TagIcon } from "@/components/icons";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { yen } from "@/lib/format";
-import { priceItems } from "@/lib/mock";
+import { priceItems as mockPriceItems } from "@/lib/mock";
+import type { PriceItem } from "@/lib/types";
+
+type BackendMode = "checking" | "database" | "local";
+
+interface PriceItemListResponse {
+  data?: PriceItem[] | null;
+  mode?: "database" | "local";
+  error?: { code: string; message: string };
+}
+
+interface PriceItemSaveResponse {
+  data?: PriceItem | null;
+  mode?: "database" | "local";
+  error?: { code: string; message: string };
+}
 
 export function PriceItemList() {
   const [q, setQ] = useState("");
   const [onlyActive, setOnlyActive] = useState(false);
+  const [items, setItems] = useState<PriceItem[]>(mockPriceItems);
   const [active, setActive] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(priceItems.map((p) => [p.id, p.isActive])),
+    Object.fromEntries(mockPriceItems.map((p) => [p.id, p.isActive])),
   );
+  const [backendMode, setBackendMode] = useState<BackendMode>("checking");
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [savingId, setSavingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadPriceItems() {
+      try {
+        const response = await fetch("/api/price-items", { cache: "no-store" });
+        const payload = (await response.json()) as PriceItemListResponse;
+
+        if (cancelled) return;
+        if (!response.ok) {
+          throw new Error(payload.error?.message ?? "単価マスターを取得できませんでした。");
+        }
+        if (payload.mode !== "database" || !payload.data) {
+          setBackendMode("local");
+          return;
+        }
+
+        setItems(payload.data);
+        setActive(Object.fromEntries(payload.data.map((p) => [p.id, p.isActive])));
+        setBackendMode("database");
+        setSyncError(null);
+      } catch (error) {
+        if (cancelled) return;
+        setBackendMode("local");
+        setSyncError(
+          error instanceof Error
+            ? error.message
+            : "単価マスターのDB接続を確認できませんでした。",
+        );
+      }
+    }
+
+    loadPriceItems();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const rows = useMemo(() => {
     const kw = q.trim().toLowerCase();
-    return priceItems.filter((p) => {
+    return items.filter((p) => {
       if (onlyActive && !active[p.id]) return false;
       if (!kw) return true;
       return p.name.toLowerCase().includes(kw);
     });
-  }, [q, onlyActive, active]);
+  }, [q, onlyActive, active, items]);
 
-  const toggle = (id: string) =>
-    setActive((s) => ({ ...s, [id]: !s[id] }));
+  const toggle = async (id: string) => {
+    const nextActive = !active[id];
+    setActive((s) => ({ ...s, [id]: nextActive }));
+
+    if (backendMode !== "database") return;
+
+    setSavingId(id);
+    setSyncError(null);
+    try {
+      const response = await fetch("/api/price-items", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemId: id, isActive: nextActive }),
+      });
+      const payload = (await response.json()) as PriceItemSaveResponse;
+      if (!response.ok) {
+        throw new Error(payload.error?.message ?? "単価マスターを更新できませんでした。");
+      }
+      if (payload.mode === "database" && payload.data) {
+        setItems((prev) =>
+          prev.map((item) => (item.id === id ? { ...item, ...payload.data } : item)),
+        );
+        setActive((s) => ({ ...s, [id]: payload.data!.isActive }));
+      }
+    } catch (error) {
+      setActive((s) => ({ ...s, [id]: !nextActive }));
+      setSyncError(
+        error instanceof Error
+          ? error.message
+          : "単価マスターの更新に失敗しました。",
+      );
+    } finally {
+      setSavingId(null);
+    }
+  };
 
   return (
     <div>
@@ -62,6 +152,29 @@ export function PriceItemList() {
         </label>
       </div>
 
+      <div className="mb-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span>
+            保存先:{" "}
+            <strong className="text-slate-800">
+              {backendMode === "database"
+                ? "データベース"
+                : backendMode === "local"
+                  ? "デモ用マスター"
+                  : "確認中"}
+            </strong>
+          </span>
+          <span className="text-xs text-slate-400">
+            {items.length} 件の単価を読み込み済み
+          </span>
+        </div>
+        {syncError && (
+          <p className="mt-2 text-xs text-amber-700">
+            DB接続前のため、画面上はデモ用マスターで動作しています。{syncError}
+          </p>
+        )}
+      </div>
+
       {rows.length === 0 ? (
         <EmptyState
           icon={<TagIcon />}
@@ -95,7 +208,11 @@ export function PriceItemList() {
                       {yen(p.unitPrice)}
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <ActiveToggle on={active[p.id]} onClick={() => toggle(p.id)} />
+                      <ActiveToggle
+                        on={active[p.id]}
+                        saving={savingId === p.id}
+                        onClick={() => toggle(p.id)}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -116,7 +233,11 @@ export function PriceItemList() {
                     {yen(p.unitPrice)} / {p.unit}
                   </div>
                 </div>
-                <ActiveToggle on={active[p.id]} onClick={() => toggle(p.id)} />
+                <ActiveToggle
+                  on={active[p.id]}
+                  saving={savingId === p.id}
+                  onClick={() => toggle(p.id)}
+                />
               </div>
             ))}
           </div>
@@ -126,13 +247,22 @@ export function PriceItemList() {
   );
 }
 
-function ActiveToggle({ on, onClick }: { on: boolean; onClick: () => void }) {
+function ActiveToggle({
+  on,
+  saving,
+  onClick,
+}: {
+  on: boolean;
+  saving: boolean;
+  onClick: () => void;
+}) {
   return (
     <button
       onClick={onClick}
+      disabled={saving}
       role="switch"
       aria-checked={on}
-      className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors ${
+      className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
         on
           ? "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200"
           : "bg-slate-100 text-slate-400 ring-1 ring-inset ring-slate-200"
@@ -141,7 +271,7 @@ function ActiveToggle({ on, onClick }: { on: boolean; onClick: () => void }) {
       <span
         className={`h-2 w-2 rounded-full ${on ? "bg-emerald-500" : "bg-slate-300"}`}
       />
-      {on ? "有効" : "無効"}
+      {saving ? "保存中" : on ? "有効" : "無効"}
     </button>
   );
 }

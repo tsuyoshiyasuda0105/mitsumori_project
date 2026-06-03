@@ -1,6 +1,6 @@
 import { computeTotals } from "@/lib/calc";
 import { company, currentUser, customers, priceItems } from "@/lib/mock";
-import type { Estimate, EstimateLine, EstimateStatus, LineType } from "@/lib/types";
+import type { Estimate, EstimateLine, EstimateStatus, LineType, PriceItem } from "@/lib/types";
 import { getSql } from "./db";
 
 const PLACEHOLDER_NO = "（保存時に自動採番）";
@@ -51,6 +51,15 @@ type DbLineRow = {
   unit_price: string | number;
   remarks: string | null;
   vendor_instructions: string | null;
+};
+
+type DbPriceItemRow = {
+  id: string;
+  external_item_code: string | null;
+  name: string;
+  unit: string;
+  unit_price: string | number;
+  is_active: boolean;
 };
 
 function toIsoDate(value: string | Date | null | undefined): string {
@@ -294,6 +303,16 @@ function mapLine(row: DbLineRow): EstimateLine {
   };
 }
 
+function mapPriceItem(row: DbPriceItemRow): PriceItem {
+  return {
+    id: row.external_item_code ?? row.id,
+    name: row.name,
+    unit: row.unit,
+    unitPrice: toNumber(row.unit_price),
+    isActive: row.is_active,
+  };
+}
+
 function mapEstimate(row: DbEstimateRow, lines: EstimateLine[]): Estimate {
   return {
     id: row.id,
@@ -397,6 +416,58 @@ export async function listDbEstimates(): Promise<Estimate[]> {
     estimates.push(mapEstimate(row, await loadLines(sql, tenantId, row.id)));
   }
   return estimates;
+}
+
+export async function listDbPriceItems(): Promise<PriceItem[]> {
+  const sql = getSql();
+  const { tenantId } = await ensureBootstrap();
+
+  const rows = (await sql`
+    select
+      id,
+      external_item_code,
+      name,
+      unit,
+      unit_price,
+      is_active
+    from price_items
+    where tenant_id = ${tenantId}
+      and deleted_at is null
+    order by sort_order asc, name asc
+  `) as DbPriceItemRow[];
+
+  return rows.map(mapPriceItem);
+}
+
+export async function updateDbPriceItemActive(
+  itemId: string,
+  isActive: boolean,
+): Promise<PriceItem> {
+  const sql = getSql();
+  const { tenantId } = await ensureBootstrap();
+
+  const rows = isUuid(itemId)
+    ? ((await sql`
+        update price_items
+        set is_active = ${isActive}, deleted_at = null
+        where tenant_id = ${tenantId}
+          and id = ${itemId}
+        returning id, external_item_code, name, unit, unit_price, is_active
+      `) as DbPriceItemRow[])
+    : ((await sql`
+        update price_items
+        set is_active = ${isActive}, deleted_at = null
+        where tenant_id = ${tenantId}
+          and external_item_code = ${itemId}
+        returning id, external_item_code, name, unit, unit_price, is_active
+      `) as DbPriceItemRow[]);
+
+  const row = rows[0];
+  if (!row) {
+    throw new ApiInputError("選択された単価マスターが見つかりません。", 404, "NOT_FOUND");
+  }
+
+  return mapPriceItem(row);
 }
 
 function normalizeLineForDb(line: EstimateLine, index: number): EstimateLine {

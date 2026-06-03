@@ -22,7 +22,7 @@ Last updated: 2026-06-03
 | ---: | --- | --- | --- |
 | 1 | 見積保存/一覧取得 | `/api/estimates` と `estimate-repository.ts` 実装済み | Neon `DATABASE_URL` 設定後にE2E確認 |
 | 2 | AI候補の見積明細反映 | 採用候補を見積明細として保存・編集画面へ遷移できる | 実DB接続後にDB保存モードでE2E確認 |
-| 3 | 単価マスター | mock/Excel取込UI中心 | DBテーブル `price_items` と画面を接続 |
+| 3 | 単価マスター | `/api/price-items` と一覧画面のDB読み込み/有効切替を実装済み | Neon `DATABASE_URL` 設定後にDBモードでE2E確認 |
 | 4 | 顧客情報 | mock中心 | DBテーブル `customers` と画面を接続 |
 | 5 | インポート履歴 | UIデモ中心 | `import_jobs` に履歴保存 |
 | 6 | 出力履歴 | CSV/印刷は実装済み | `export_jobs` に履歴保存 |
@@ -32,7 +32,7 @@ Last updated: 2026-06-03
 1. AI解析候補を見積編集画面へ反映する。Done: 採用候補を保存し、既存明細を残して末尾追加。
 2. DB未接続でもlocalStorageで同じ操作感になるようにする。Done: 既存の保存ストア経由でlocalStorage fallback。
 3. `DATABASE_URL` 設定後、見積保存/一覧取得をDBモードで確認する。
-4. 単価マスターをDB保存へつなぐ。
+4. 単価マスターをDB保存へつなぐ。Done: 一覧取得と有効/無効切替をAPI経由化。
 5. 顧客情報をDB保存へつなぐ。
 6. import/export履歴をDBへ残す。
 7. 音声録音/文字起こしはユーザー検証後に接続する。
