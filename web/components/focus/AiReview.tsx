@@ -19,11 +19,16 @@ import {
   findPriceItem,
   mockAiResult,
 } from "@/lib/ai";
+import { useEstimateStore } from "@/lib/estimate-store";
 import { yen } from "@/lib/format";
-import { customerName, priceItems } from "@/lib/mock";
+import { customerName, getEstimateOrBlank, priceItems } from "@/lib/mock";
+import type { Estimate, EstimateLine } from "@/lib/types";
 
 type LineStatus = "adopt" | "exclude";
 type ConfirmClass = "later" | "confirmed" | "skip";
+
+const AI_LINE_ID_PREFIX = "ai-ref-";
+const AI_INTERNAL_SECTION_RE = /\n{0,2}--- AI解析メモ ---[\s\S]*$/u;
 
 const SOURCE_LABEL: Record<string, string> = {
   voice: "音声入力",
@@ -31,9 +36,60 @@ const SOURCE_LABEL: Record<string, string> = {
   meeting: "打ち合わせ録音",
 };
 
+function candidateLineId(candidateId: string): string {
+  return `${AI_LINE_ID_PREFIX}${candidateId}`;
+}
+
+function finiteNumber(value: number): number {
+  return Number.isFinite(value) ? value : 0;
+}
+
+function aiCandidateToLine(
+  candidate: AiLineCandidate,
+  lineNo: number,
+): EstimateLine {
+  const internalNotes = [
+    !candidate.matchItemId ? "単価マスター未一致。単価・品目を確認してください。" : "",
+    candidate.quantityCompleted ? "数量はAI補完値です。実測値を確認してください。" : "",
+    candidate.unitCompleted ? "単位はAI補完値です。実測値を確認してください。" : "",
+  ].filter(Boolean);
+
+  return {
+    id: candidateLineId(candidate.id),
+    lineNo,
+    priceItemId: candidate.matchItemId ?? undefined,
+    location: candidate.location.trim(),
+    itemName: candidate.itemName.trim() || "未設定品目",
+    description: "AI解析候補から反映",
+    quantity: finiteNumber(candidate.quantity),
+    unit: candidate.unit.trim() || "式",
+    unitPrice: finiteNumber(candidate.unitPrice),
+    customerNote: candidate.customerNote?.trim() || undefined,
+    internalInstruction: internalNotes.join("\n") || undefined,
+    lineType: "normal",
+  };
+}
+
+function mergeAiInternalSection(baseText: string, aiNotes: string[]): string {
+  const cleaned = baseText.replace(AI_INTERNAL_SECTION_RE, "").trim();
+  if (aiNotes.length === 0) return cleaned;
+
+  return [
+    cleaned,
+    ["--- AI解析メモ ---", ...aiNotes.map((note) => `- ${note}`)].join("\n"),
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
 export function AiReview({ estimateId }: { estimateId: string }) {
   const router = useRouter();
   const result = useMemo(() => mockAiResult("voice"), []);
+  const fallbackEstimate = useMemo(
+    () => getEstimateOrBlank(estimateId).estimate,
+    [estimateId],
+  );
+  const { ready, backendMode, getEstimate, saveEstimate } = useEstimateStore();
 
   const [lines, setLines] = useState<AiLineCandidate[]>(result.lines);
   const [status, setStatus] = useState<Record<string, LineStatus>>(
@@ -47,6 +103,8 @@ export function AiReview({ estimateId }: { estimateId: string }) {
     () => Object.fromEntries(result.internalCandidates.map((c) => [c.id, true])),
   );
   const [showTranscript, setShowTranscript] = useState(false);
+  const [isReflecting, setIsReflecting] = useState(false);
+  const [reflectError, setReflectError] = useState<string | null>(null);
 
   const setLine = (id: string, patch: Partial<AiLineCandidate>) =>
     setLines((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)));
@@ -74,10 +132,72 @@ export function AiReview({ estimateId }: { estimateId: string }) {
     (sum, l) => sum + Math.round(l.quantity * l.unitPrice),
     0,
   );
-  const canReflect = adoptedLines.some((l) => l.itemName.trim().length > 0);
+  const canReflect =
+    ready && adoptedLines.some((l) => l.itemName.trim().length > 0);
   const unresolvedCount = adoptedLines.filter((l) => !l.matchItemId).length;
+  const pendingConfirmItems = result.confirmItems.filter(
+    (c) => confirms[c.id] === "later",
+  );
+  const saveTargetLabel =
+    backendMode === "database"
+      ? "データベース"
+      : backendMode === "local"
+        ? "このブラウザ"
+        : "確認中";
 
-  const reflect = () => router.push(`/estimates/${estimateId}/edit`);
+  const buildReflectedEstimate = (): Estimate => {
+    const base = getEstimate(estimateId) ?? fallbackEstimate;
+    const candidateIds = new Set(adoptedLines.map((line) => candidateLineId(line.id)));
+    const preservedLines = base.lines.filter((line) => !candidateIds.has(line.id));
+    const reflectedLines = adoptedLines.map((line, index) =>
+      aiCandidateToLine(line, preservedLines.length + index + 1),
+    );
+    const allLines = [...preservedLines, ...reflectedLines].map((line, index) => ({
+      ...line,
+      lineNo: index + 1,
+    }));
+    const adoptedInternalNotes = result.internalCandidates
+      .filter((item) => internalAdopt[item.id])
+      .map((item) => `業者指示: ${item.text}`);
+    const confirmNotes = pendingConfirmItems.map((item) => `未確認: ${item.text}`);
+    const hasUnconfirmedAi =
+      unresolvedCount > 0 ||
+      pendingConfirmItems.length > 0 ||
+      adoptedLines.some((line) => line.quantityCompleted || line.unitCompleted);
+
+    return {
+      ...base,
+      customerId: base.customerId ?? result.customerId,
+      title: base.title.trim() || result.titleSuggestion,
+      status: "draft",
+      lines: allLines,
+      internalInstruction: mergeAiInternalSection(base.internalInstruction, [
+        ...adoptedInternalNotes,
+        ...confirmNotes,
+      ]),
+      hasUnconfirmedAi,
+      updatedAt: new Date().toISOString(),
+    };
+  };
+
+  const reflect = async () => {
+    if (!canReflect || isReflecting) return;
+
+    setIsReflecting(true);
+    setReflectError(null);
+    try {
+      const saved = await saveEstimate(buildReflectedEstimate());
+      router.push(`/estimates/${saved.id}/edit`);
+    } catch (error) {
+      setReflectError(
+        error instanceof Error
+          ? error.message
+          : "見積への反映に失敗しました。",
+      );
+    } finally {
+      setIsReflecting(false);
+    }
+  };
 
   return (
     <div>
@@ -261,6 +381,10 @@ export function AiReview({ estimateId }: { estimateId: string }) {
                   {yen(adoptedTotal)}
                 </dd>
               </div>
+              <div className="flex justify-between">
+                <dt className="text-slate-500">保存先</dt>
+                <dd className="font-semibold text-slate-700">{saveTargetLabel}</dd>
+              </div>
             </dl>
             {unresolvedCount > 0 && (
               <p className="mt-2 flex items-start gap-1.5 text-xs text-rose-600">
@@ -268,34 +392,50 @@ export function AiReview({ estimateId }: { estimateId: string }) {
                 単価マスター未一致が {unresolvedCount} 件あります。手入力単価として反映されます。
               </p>
             )}
+            {pendingConfirmItems.length > 0 && (
+              <p className="mt-2 flex items-start gap-1.5 text-xs text-amber-700">
+                <AlertTriangle className="mt-0.5 shrink-0 text-sm" />
+                未確認の確認事項が {pendingConfirmItems.length} 件あります。内部メモに残します。
+              </p>
+            )}
+            {reflectError && (
+              <p className="mt-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                {reflectError}
+              </p>
+            )}
             <button
               onClick={reflect}
-              disabled={!canReflect}
+              disabled={!canReflect || isReflecting}
               className="btn-primary mt-3 hidden w-full disabled:cursor-not-allowed disabled:opacity-40 lg:flex"
             >
               <Check className="text-base" />
-              見積に反映する
+              {isReflecting ? "反映中..." : "見積に反映する"}
             </button>
             <button
               onClick={reflect}
-              className="btn-ghost mt-1 hidden w-full text-sm text-slate-500 lg:flex"
+              disabled={!canReflect || isReflecting}
+              className="btn-ghost mt-1 hidden w-full text-sm text-slate-500 disabled:cursor-not-allowed disabled:opacity-40 lg:flex"
             >
-              下書きに保存（未確認のまま）
+              {isReflecting ? "保存中..." : "下書きに保存（未確認のまま）"}
             </button>
           </section>
         </aside>
       </div>
 
       <MobileActionBar>
-        <button onClick={reflect} className="btn-secondary flex-1">
-          下書き保存
+        <button
+          onClick={reflect}
+          disabled={!canReflect || isReflecting}
+          className="btn-secondary flex-1 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {isReflecting ? "保存中..." : "下書き保存"}
         </button>
         <button
           onClick={reflect}
-          disabled={!canReflect}
+          disabled={!canReflect || isReflecting}
           className="btn-primary flex-1 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          見積に反映
+          {isReflecting ? "反映中..." : "見積に反映"}
         </button>
       </MobileActionBar>
     </div>
