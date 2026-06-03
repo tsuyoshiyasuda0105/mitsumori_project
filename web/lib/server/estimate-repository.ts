@@ -84,6 +84,8 @@ type DbPriceItemRow = {
   is_active: boolean;
 };
 
+type PriceItemInput = Partial<Omit<PriceItem, "id">> & { id?: string };
+
 type DbImportJobRow = {
   id: string;
   job_type: string;
@@ -671,6 +673,7 @@ export async function deleteDbCustomer(customerId: string): Promise<{ id: string
 
   return { id: row.external_customer_code ?? row.id };
 }
+
 export async function listDbPriceItems(): Promise<PriceItem[]> {
   const sql = getSql();
   const { tenantId } = await ensureBootstrap();
@@ -692,27 +695,126 @@ export async function listDbPriceItems(): Promise<PriceItem[]> {
   return rows.map(mapPriceItem);
 }
 
+function normalizePriceItemInput(input: PriceItemInput): PriceItemInput & {
+  name: string;
+  unit: string;
+  unitPrice: number;
+  isActive: boolean;
+} {
+  const name = toCleanString(input.name);
+  const unit = toCleanString(input.unit);
+  const unitPrice = Number(input.unitPrice ?? 0);
+
+  if (!name) throw new ApiInputError("品目名を入力してください。", 422);
+  if (!unit) throw new ApiInputError("単位を入力してください。", 422);
+  if (!Number.isFinite(unitPrice) || unitPrice < 0) {
+    throw new ApiInputError("単価は0以上の数値で入力してください。", 422);
+  }
+
+  return {
+    id: toCleanString(input.id) || undefined,
+    name,
+    unit,
+    unitPrice,
+    isActive: input.isActive ?? true,
+  };
+}
+
+async function nextPriceItemSortOrder(sql: Sql, tenantId: string): Promise<number> {
+  const rows = (await sql`
+    select coalesce(max(sort_order), 0) + 1 as next_order
+    from price_items
+    where tenant_id = ${tenantId}
+  `) as Array<{ next_order: string | number }>;
+
+  return toNumber(rows[0]?.next_order);
+}
+
+export async function saveDbPriceItem(input: PriceItemInput): Promise<PriceItem> {
+  const item = normalizePriceItemInput(input);
+  const sql = getSql();
+  const { tenantId } = await ensureBootstrap();
+  let rows: DbPriceItemRow[] = [];
+
+  if (item.id) {
+    rows = isUuid(item.id)
+      ? ((await sql`
+          update price_items
+          set
+            name = ${item.name},
+            unit = ${item.unit},
+            unit_price = ${item.unitPrice},
+            is_active = ${item.isActive},
+            deleted_at = null
+          where tenant_id = ${tenantId} and id = ${item.id}
+          returning id, external_item_code, name, unit, unit_price, is_active
+        `) as DbPriceItemRow[])
+      : ((await sql`
+          update price_items
+          set
+            name = ${item.name},
+            unit = ${item.unit},
+            unit_price = ${item.unitPrice},
+            is_active = ${item.isActive},
+            deleted_at = null
+          where tenant_id = ${tenantId} and external_item_code = ${item.id}
+          returning id, external_item_code, name, unit, unit_price, is_active
+        `) as DbPriceItemRow[]);
+  }
+
+  if (!rows[0]) {
+    const sortOrder = await nextPriceItemSortOrder(sql, tenantId);
+    rows = (await sql`
+      insert into price_items (
+        tenant_id,
+        external_item_code,
+        name,
+        unit,
+        unit_price,
+        is_active,
+        sort_order
+      ) values (
+        ${tenantId},
+        ${item.id && !isUuid(item.id) ? item.id : null},
+        ${item.name},
+        ${item.unit},
+        ${item.unitPrice},
+        ${item.isActive},
+        ${sortOrder}
+      )
+      returning id, external_item_code, name, unit, unit_price, is_active
+    `) as DbPriceItemRow[];
+  }
+
+  return mapPriceItem(rows[0]);
+}
+
 export async function updateDbPriceItemActive(
   itemId: string,
   isActive: boolean,
 ): Promise<PriceItem> {
+  const existing = await getDbPriceItemForUpdate(itemId);
+  return saveDbPriceItem({ ...existing, id: itemId, isActive });
+}
+
+async function getDbPriceItemForUpdate(itemId: string): Promise<PriceItem> {
+  const cleanId = toCleanString(itemId);
+  if (!cleanId) throw new ApiInputError("itemId is required", 400);
+
   const sql = getSql();
   const { tenantId } = await ensureBootstrap();
-
-  const rows = isUuid(itemId)
+  const rows = isUuid(cleanId)
     ? ((await sql`
-        update price_items
-        set is_active = ${isActive}, deleted_at = null
-        where tenant_id = ${tenantId}
-          and id = ${itemId}
-        returning id, external_item_code, name, unit, unit_price, is_active
+        select id, external_item_code, name, unit, unit_price, is_active
+        from price_items
+        where tenant_id = ${tenantId} and id = ${cleanId} and deleted_at is null
+        limit 1
       `) as DbPriceItemRow[])
     : ((await sql`
-        update price_items
-        set is_active = ${isActive}, deleted_at = null
-        where tenant_id = ${tenantId}
-          and external_item_code = ${itemId}
-        returning id, external_item_code, name, unit, unit_price, is_active
+        select id, external_item_code, name, unit, unit_price, is_active
+        from price_items
+        where tenant_id = ${tenantId} and external_item_code = ${cleanId} and deleted_at is null
+        limit 1
       `) as DbPriceItemRow[]);
 
   const row = rows[0];
@@ -721,6 +823,34 @@ export async function updateDbPriceItemActive(
   }
 
   return mapPriceItem(row);
+}
+
+export async function deleteDbPriceItem(itemId: string): Promise<{ id: string }> {
+  const cleanId = toCleanString(itemId);
+  if (!cleanId) throw new ApiInputError("itemId is required", 400);
+
+  const sql = getSql();
+  const { tenantId } = await ensureBootstrap();
+  const rows = isUuid(cleanId)
+    ? ((await sql`
+        update price_items
+        set deleted_at = now(), is_active = false
+        where tenant_id = ${tenantId} and id = ${cleanId}
+        returning id, external_item_code
+      `) as Array<{ id: string; external_item_code: string | null }> )
+    : ((await sql`
+        update price_items
+        set deleted_at = now(), is_active = false
+        where tenant_id = ${tenantId} and external_item_code = ${cleanId}
+        returning id, external_item_code
+      `) as Array<{ id: string; external_item_code: string | null }> );
+
+  const row = rows[0];
+  if (!row) {
+    throw new ApiInputError("選択された単価マスターが見つかりません。", 404, "NOT_FOUND");
+  }
+
+  return { id: row.external_item_code ?? row.id };
 }
 
 export async function listDbImportJobs(limit = 20): Promise<ImportJobRecord[]> {
