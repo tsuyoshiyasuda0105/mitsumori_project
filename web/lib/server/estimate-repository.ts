@@ -170,26 +170,26 @@ async function getOrCreateTenant(sql: Sql): Promise<string> {
   return inserted[0].id;
 }
 
-async function ensureDemoUser(sql: Sql, tenantId: string): Promise<string> {
-  await sql`
+async function ensureDemoUser(
+  sql: Sql,
+  tenantId: string,
+): Promise<{ tenantId: string; userId: string }> {
+  const rows = (await sql`
     insert into users (tenant_id, auth_provider, auth_subject, email, name, role, status)
     values (${tenantId}, 'demo', ${currentUser.id}, 'demo@voice-estimate.local', ${currentUser.name}, ${currentUser.role}, 'active')
-    on conflict do nothing
-  `;
+    on conflict (auth_provider, auth_subject) do update
+    set name = excluded.name,
+        role = excluded.role,
+        status = excluded.status
+    returning id, tenant_id
+  `) as Array<{ id: string; tenant_id: string }>;
 
-  await sql`
-    update users
-    set name = ${currentUser.name}, role = ${currentUser.role}, status = 'active'
-    where tenant_id = ${tenantId} and auth_provider = 'demo' and auth_subject = ${currentUser.id}
-  `;
+  const row = rows[0];
+  if (!row?.id || !row.tenant_id) {
+    throw new Error("Demo user could not be initialized");
+  }
 
-  const rows = (await sql`
-    select id from users
-    where tenant_id = ${tenantId} and auth_provider = 'demo' and auth_subject = ${currentUser.id}
-    limit 1
-  `) as Array<{ id: string }>;
-
-  return rows[0].id;
+  return { tenantId: row.tenant_id, userId: row.id };
 }
 
 async function ensureDemoCustomers(sql: Sql, tenantId: string) {
@@ -281,8 +281,10 @@ async function ensureBootstrap(): Promise<{ tenantId: string; userId: string }> 
     return { tenantId: bootstrapTenantId, userId: bootstrapUserId };
   }
 
-  const tenantId = await getOrCreateTenant(sql);
-  const userId = await ensureDemoUser(sql, tenantId);
+  const candidateTenantId = await getOrCreateTenant(sql);
+  const demoUser = await ensureDemoUser(sql, candidateTenantId);
+  const tenantId = demoUser.tenantId;
+  const userId = demoUser.userId;
   await ensureDemoCustomers(sql, tenantId);
   await ensureDemoPriceItems(sql, tenantId);
 
