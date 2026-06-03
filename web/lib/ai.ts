@@ -53,9 +53,8 @@ export function findPriceItem(id: string | null | undefined): PriceItem | undefi
 
 export const SAMPLE_TRANSCRIPT =
   "田中さんの外壁塗装です。場所は外壁。まず足場をぐるっと、たぶん120平米くらい。" +
-  "それから高圧洗浄して、下塗り中塗り上塗りで3回塗り。シリコンの標準で。" +
-  "あとシーリングの打ち替えもお願いします。たぶん80メートルくらい。" +
-  "ベランダの防水も気になるって言ってた。" +
+  "それから高圧洗浄して、シリコン塗装でお願いします。" +
+  "あと目地まわりのシリコンも少し見てください。" +
   "前の道が狭いから足場の搬入は朝イチで、誘導員を1人つけてほしい。北側の家に養生しっかりで。";
 
 /** 音声/テキスト入力に対するAI解析結果のモック（外壁塗装の例）。 */
@@ -64,18 +63,18 @@ export function mockAiResult(source: AiSource = "voice"): AiParseResult {
     source,
     customerId: "c-001",
     siteAddress: "愛知県岡崎市○○町1-1",
-    titleSuggestion: "外壁塗装工事",
-    workSummary: "足場・高圧洗浄・外壁3回塗り・シーリング打替え。ベランダ防水は要確認。",
+    titleSuggestion: "外壁シリコン塗装工事",
+    workSummary: "足場・高圧洗浄・シリコン塗装。目地まわりのシリコン補修と搬入条件は要確認。",
     transcript: SAMPLE_TRANSCRIPT,
     lines: [
       {
         id: "ai-1",
         location: "外壁",
-        itemName: "足場設置・解体",
+        itemName: "足場",
         quantity: 120,
-        unit: "m2",
-        unitPrice: 900,
-        matchItemId: "p-001",
+        unit: "㎡",
+        unitPrice: 1000,
+        matchItemId: "p-003",
         matchConfidence: 98,
         altMatchIds: [],
       },
@@ -84,42 +83,42 @@ export function mockAiResult(source: AiSource = "voice"): AiParseResult {
         location: "外壁",
         itemName: "高圧洗浄",
         quantity: 120,
-        unit: "m2",
-        unitPrice: 250,
-        matchItemId: "p-002",
-        matchConfidence: 96,
+        unit: "㎡",
+        unitPrice: 500,
+        matchItemId: "p-004",
+        matchConfidence: 97,
         altMatchIds: [],
         quantityCompleted: true,
       },
       {
         id: "ai-3",
         location: "外壁",
-        itemName: "外壁塗装（3回塗り）",
+        itemName: "シリコン塗装",
         quantity: 120,
-        unit: "m2",
-        unitPrice: 1100,
-        matchItemId: "p-004",
-        matchConfidence: 64,
-        altMatchIds: ["p-003", "p-004", "p-005"],
+        unit: "㎡",
+        unitPrice: 4000,
+        matchItemId: "p-001",
+        matchConfidence: 95,
+        altMatchIds: ["p-001", "p-002"],
         quantityCompleted: true,
-        customerNote: "シリコン塗料（標準グレード）を想定。",
+        customerNote: "シリコン塗装の標準単価を適用しています。",
       },
       {
         id: "ai-4",
-        location: "外壁",
-        itemName: "シーリング打替え",
-        quantity: 80,
-        unit: "m",
-        unitPrice: 1200,
-        matchItemId: "p-007",
-        matchConfidence: 88,
-        altMatchIds: [],
-        quantityCompleted: true,
+        location: "目地",
+        itemName: "シリコン",
+        quantity: 1,
+        unit: "式",
+        unitPrice: 4000,
+        matchItemId: "p-032",
+        matchConfidence: 74,
+        altMatchIds: ["p-032", "p-014"],
+        unitCompleted: true,
       },
       {
         id: "ai-5",
-        location: "ベランダ",
-        itemName: "ベランダ防水",
+        location: "外部",
+        itemName: "養生・誘導員",
         quantity: 1,
         unit: "式",
         unitPrice: 0,
@@ -131,18 +130,18 @@ export function mockAiResult(source: AiSource = "voice"): AiParseResult {
       },
     ],
     confirmItems: [
-      { id: "cf-1", text: "外壁の塗装面積120m2はAI推定値です。実測値の確認が必要です。" },
-      { id: "cf-2", text: "ベランダ防水は単価マスター未登録です。施工範囲と単価を確認してください。" },
-      { id: "cf-3", text: "屋根塗装の要否について言及がありません。確認してください。" },
+      { id: "cf-1", text: "外壁面積120㎡はAI推定値です。実測値の確認が必要です。" },
+      { id: "cf-2", text: "養生・誘導員は単価マスター未登録です。必要なら諸経費または別明細として追加してください。" },
+      { id: "cf-3", text: "目地まわりのシリコン補修範囲を現地で確認してください。" },
     ],
     internalCandidates: [
-      { id: "in-1", text: "前面道路が狭いため足場搬入は朝イチ。誘導員1名を手配。" },
+      { id: "in-1", text: "前面道路が狭いため、足場搬入は朝イチ。誘導員1名を手配。" },
       { id: "in-2", text: "北側隣地への養生を徹底する。" },
     ],
   };
 }
 
-/* ── 打ち合わせ録音（別オプション）のAI整理結果 ── */
+/* ── 打ち合わせ録音（別オプション）のAI整理結果 ───────────── */
 
 export interface MeetingPoint {
   id: string;
@@ -167,27 +166,27 @@ export interface MeetingSummary {
 export function mockMeetingSummary(): MeetingSummary {
   return {
     transcript:
-      "（営業）本日はお時間ありがとうございます。外壁の件、進めさせていただきます。" +
-      "（顧客）色は今より少し明るめにしたいです。あと予算は150万くらいに収めたい。" +
-      "（営業）承知しました。屋根は今回見送りで。（顧客）はい。あと着工は来月の落ち着いた頃で。" +
-      "（顧客）駐車場は日中使うので、資材は端に寄せてもらえると助かります。",
+      "（営業）本日はお時間ありがとうございます。原状回復の件、進めさせていただきます。" +
+      "（顧客）クロスは全部ではなく汚れが強い部屋を優先したいです。クリーニングは1LDKでお願いします。" +
+      "（営業）承知しました。コンセントプレートとソフト巾木も傷がある箇所だけ交換で見ます。" +
+      "（顧客）入居前なので、作業完了写真もほしいです。",
     points: [
-      { id: "mp-1", text: "外壁塗装を進める方向で合意。屋根は今回見送り。" },
-      { id: "mp-2", text: "予算の上限は約150万円。" },
-      { id: "mp-3", text: "着工は翌月の中旬以降を希望。" },
+      { id: "mp-1", text: "クロス貼替は汚れが強い部屋を優先。" },
+      { id: "mp-2", text: "クリーニングは1LDKの単価で作成。" },
+      { id: "mp-3", text: "コンセントプレートとソフト巾木は傷がある箇所のみ交換。" },
     ],
     requests: [
-      { id: "mr-1", text: "外壁色は現状より明るめのトーンを希望。" },
-      { id: "mr-2", text: "日中は駐車場を使用するため資材は端に寄せてほしい。" },
+      { id: "mr-1", text: "作業完了写真を提出してほしい。" },
+      { id: "mr-2", text: "入居前に作業を完了させたい。" },
     ],
     confirmItems: [
-      { id: "mc-1", text: "予算150万円に対する仕様（塗料グレード）の調整が必要。" },
-      { id: "mc-2", text: "希望色の色見本を次回提示する。" },
+      { id: "mc-1", text: "クロス数量は現地採寸後に確定。" },
+      { id: "mc-2", text: "交換対象のコンセントプレート数を確認。" },
     ],
     reflectCandidates: [
-      { id: "rc-1", label: "件名：外壁塗装工事（屋根を除く）", kind: "line" },
-      { id: "rc-2", label: "顧客向け備考：外壁色は明るめトーン。色見本は契約後に確認。", kind: "customerNote" },
-      { id: "rc-3", label: "業者指示：日中は駐車場使用。資材は敷地端に集約する。", kind: "internal" },
+      { id: "rc-1", label: "件名：1LDK 原状回復工事", kind: "line" },
+      { id: "rc-2", label: "顧客向け備考：作業完了写真を提出します。", kind: "customerNote" },
+      { id: "rc-3", label: "業者指示：入居前対応。完了写真を必ず残す。", kind: "internal" },
     ],
   };
 }

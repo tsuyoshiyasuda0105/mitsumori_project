@@ -24,7 +24,7 @@ interface NavItem {
 }
 
 const PRIMARY_NAV: NavItem[] = [
-  { href: "/", label: "ダッシュボード", icon: Home },
+  { href: "/dashboard", label: "ダッシュボード", icon: Home },
   { href: "/estimates", label: "見積", icon: FileText },
   { href: "/customers", label: "顧客", icon: Users },
   { href: "/price-items", label: "単価マスター", icon: TagIcon },
@@ -33,7 +33,7 @@ const PRIMARY_NAV: NavItem[] = [
 ];
 
 const MOBILE_NAV: NavItem[] = [
-  { href: "/", label: "ホーム", icon: Home },
+  { href: "/dashboard", label: "ホーム", icon: Home },
   { href: "/estimates", label: "見積", icon: FileText },
   { href: "/customers", label: "顧客", icon: Users },
   { href: "/price-items", label: "単価", icon: TagIcon },
@@ -42,7 +42,7 @@ const MOBILE_NAV: NavItem[] = [
 function useIsActive() {
   const path = usePathname();
   return (href: string) =>
-    href === "/" ? path === "/" : path.startsWith(href);
+    href === "/dashboard" ? path === "/dashboard" : path.startsWith(href);
 }
 
 const FOCUS_LEAVES = ["edit", "voice", "ai-review", "meeting", "export"];

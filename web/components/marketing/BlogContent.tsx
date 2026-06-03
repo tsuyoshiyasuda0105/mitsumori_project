@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { Check, EyeOff, Sparkles } from "@/components/icons";
 import type { ContentBlock } from "@/lib/blog";
@@ -100,6 +101,50 @@ function Block({ block }: { block: ContentBlock }) {
             </li>
           ))}
         </ol>
+      );
+    case "table":
+      return (
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-left text-sm">
+              <thead className="bg-slate-50 text-xs font-bold text-slate-500">
+                <tr>
+                  {block.headers.map((header) => (
+                    <th key={header} className="whitespace-nowrap px-4 py-3">
+                      {header}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {block.rows.map((row, rowIndex) => (
+                  <tr key={rowIndex}>
+                    {row.map((cell, cellIndex) => (
+                      <td key={`${rowIndex}-${cellIndex}`} className="min-w-[160px] px-4 py-3 leading-7 text-slate-700">
+                        <Inline text={cell} />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    case "cta":
+      return (
+        <div className="rounded-2xl border border-brand-200 bg-gradient-to-br from-brand-50 to-sky-50 p-5 sm:p-6">
+          <p className="text-base font-extrabold text-slate-900">{block.title}</p>
+          <p className="mt-2 text-sm leading-7 text-slate-700">
+            <Inline text={block.text} />
+          </p>
+          <Link
+            href={block.href}
+            className="mt-4 inline-flex min-h-[42px] items-center justify-center rounded-lg bg-brand-600 px-5 text-sm font-bold text-white hover:bg-brand-700"
+          >
+            {block.label}
+          </Link>
+        </div>
       );
     case "callout": {
       const s = CALLOUT_STYLES[block.tone];

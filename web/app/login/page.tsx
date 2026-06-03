@@ -24,7 +24,7 @@ export default function LoginPage() {
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            router.push("/");
+            router.push("/dashboard");
           }}
           className="card space-y-4 p-6"
         >

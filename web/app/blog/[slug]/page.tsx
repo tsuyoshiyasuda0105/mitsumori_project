@@ -36,11 +36,20 @@ export function generateMetadata({
       title: post.title,
       description: post.description,
       publishedTime: post.date,
+      images: [
+        {
+          url: "/og-image.svg",
+          width: 1200,
+          height: 630,
+          alt: post.title,
+        },
+      ],
     },
     twitter: {
       card: "summary_large_image",
       title: post.title,
       description: post.description,
+      images: ["/og-image.svg"],
     },
     robots: { index: true, follow: true },
   };
@@ -66,14 +75,19 @@ export default function BlogPostPage({
       dateModified: post.date,
       inLanguage: "ja",
       mainEntityOfPage: `${SITE_URL}/blog/${post.slug}`,
+      image: `${SITE_URL}/og-image.svg`,
       author: { "@type": "Organization", name: "ボイス見積" },
-      publisher: { "@type": "Organization", name: "ボイス見積" },
+      publisher: {
+        "@type": "Organization",
+        name: "ボイス見積",
+        logo: { "@type": "ImageObject", url: `${SITE_URL}/icon.svg` },
+      },
     },
     {
       "@context": "https://schema.org",
       "@type": "BreadcrumbList",
       itemListElement: [
-        { "@type": "ListItem", position: 1, name: "ホーム", item: `${SITE_URL}/lp` },
+        { "@type": "ListItem", position: 1, name: "ホーム", item: SITE_URL },
         { "@type": "ListItem", position: 2, name: "お役立ち記事", item: `${SITE_URL}/blog` },
         {
           "@type": "ListItem",

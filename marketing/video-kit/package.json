@@ -1,0 +1,21 @@
+{
+  "name": "mitsumori-video-kit",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "preview": "remotion preview src/index.tsx",
+    "render:short": "remotion render src/index.tsx VoiceEstimateShort out/voice-estimate-short-remotion.mp4 --codec=h264 --pixel-format=yuv420p",
+    "render:lp": "remotion render src/index.tsx VoiceEstimateShort ../../web/public/videos/voice-estimate-short.mp4 --codec=h264 --pixel-format=yuv420p"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.471",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "remotion": "4.0.471"
+  },
+  "devDependencies": {
+    "@types/react": "18.3.3",
+    "@types/react-dom": "18.3.0",
+    "typescript": "5.9.3"
+  }
+}

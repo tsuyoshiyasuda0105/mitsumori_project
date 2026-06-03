@@ -1,7 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import {
-  Building,
   Check,
   ChevronRight,
   EyeOff,
@@ -9,171 +8,142 @@ import {
   Lock,
   Mic,
   Search,
-  Share,
   Sparkles,
   Spreadsheet,
-  Upload,
 } from "@/components/icons";
 
+const DEMO_VIDEO_SRC = "/videos/voice-estimate-short.mp4";
+const DEMO_VIDEO_POSTER = "/videos/voice-estimate-poster.svg";
+
 const NAV = [
+  { href: "#examples", label: "実例" },
   { href: "#problem", label: "課題" },
   { href: "#features", label: "機能" },
+  { href: "#movie", label: "動画" },
   { href: "#flow", label: "流れ" },
-  { href: "#security", label: "安全設計" },
   { href: "#faq", label: "FAQ" },
 ];
 
+const INDUSTRIES = ["外壁塗装", "リフォーム", "設備工事", "内装", "外構", "工務店"];
+
+const SAMPLE_ESTIMATES = [
+  {
+    title: "外壁塗装 A様邸",
+    category: "塗装",
+    rows: ["外壁シリコン塗装 180㎡", "くさび足場 210㎡", "高圧洗浄 95㎡"],
+  },
+  {
+    title: "内装リフォーム",
+    category: "内装",
+    rows: ["クロス張替 42㎡", "床撤去 一式", "下地補修 6箇所"],
+  },
+  {
+    title: "設備交換工事",
+    category: "設備",
+    rows: ["給湯器交換 1台", "配管部材 一式", "試運転・撤去費"],
+  },
+];
+
 const PROBLEMS = [
-  {
-    title: "現場メモが散らばる",
-    body: "打ち合わせ内容が手帳、写真、LINE、記憶に分かれ、見積作成時に探し直しが発生します。",
-  },
-  {
-    title: "単価の確認に時間がかかる",
-    body: "品目ごとの単位や単価をExcelから探して転記するため、入力漏れや金額のばらつきが起きます。",
-  },
-  {
-    title: "内部メモの出し分けが怖い",
-    body: "原価、利益、業者への指示を見積書に載せないよう、出力前の確認に神経を使います。",
-  },
+  ["現場メモが散らばる", "手帳、写真、LINE、記憶が分かれ、見積作成時に探し直しが発生します。"],
+  ["単価確認で止まる", "Excel単価表を開き、品目名・単位・単価を探して転記する時間が残ります。"],
+  ["内部メモが怖い", "原価、利益、業者指示を顧客向けPDFへ混ぜない確認が必要です。"],
 ];
 
 const FEATURES = [
   {
     icon: <Mic className="text-xl" />,
-    title: "音声から明細候補を作成",
-    body: "場所、品目、数量、備考、業者指示事項をAIが候補化。顧客や見積日などのヘッダ情報はAIで入力しません。",
+    title: "音声から明細候補",
+    body: "現場で話した内容から、場所・品目・数量・備考をAIが候補化します。",
   },
   {
     icon: <Spreadsheet className="text-xl" />,
-    title: "単価マスターExcel取込",
-    body: "既存の単価表を取り込み、品目、単位、単価、外部品目IDを管理。AIは単位を推測せず、マスターの単位を使います。",
+    title: "Excel単価表を活用",
+    body: "既存の単価表をマスターとして使い、候補の品目・単位・単価を照合します。",
   },
   {
     icon: <EyeOff className="text-xl" />,
-    title: "業者指示事項を分離",
-    body: "明細ごとに内部向け指示を保持。顧客向けPDFには出さず、社内確認用Excelには出力できます。",
+    title: "業者指示を分離",
+    body: "顧客向けPDFには出さず、社内確認用・業者用Excelで扱う設計です。",
   },
   {
     icon: <FileText className="text-xl" />,
-    title: "Excel/PDF出力",
-    body: "顧客向け見積書PDFと、社内確認・業者指示用Excelを用途別に出力します。",
+    title: "PDF / Excel出力",
+    body: "提出用と社内確認用を分けて、出力前のチェック負担を減らします。",
   },
   {
     icon: <Lock className="text-xl" />,
     title: "会社別データ分離",
-    body: "SupabaseのRLSを前提に、自社の顧客、単価、見積、音声ファイルだけを扱う設計です。",
+    body: "顧客・単価・見積・AI履歴を会社単位で分ける設計を前提にしています。",
   },
   {
-    icon: <Share className="text-xl" />,
-    title: "外部連携を見据えたID",
-    body: "単価マスターに独自IDを持たせ、原価管理、施工管理、会計ソフトへの将来連携に備えます。",
+    icon: <Search className="text-xl" />,
+    title: "人が確認して確定",
+    body: "AIは確定処理をせず、担当者が採用・修正してから見積へ反映します。",
   },
 ];
 
 const STEPS = [
-  {
-    no: "01",
-    title: "顧客を選択",
-    body: "見積編集画面で顧客と件名を選びます。AIが顧客情報を勝手に入力することはありません。",
-  },
-  {
-    no: "02",
-    title: "現場内容を話す",
-    body: "スマホで作業内容を録音。テキスト入力からも同じ流れで明細候補を作れます。",
-  },
-  {
-    no: "03",
-    title: "単価マスターと照合",
-    body: "AIが品目候補を出し、単価マスターの単位と単価を候補として提示します。",
-  },
-  {
-    no: "04",
-    title: "確認して出力",
-    body: "担当者が明細を確認し、PDFまたはExcelで出力。業者指示事項は出力先ごとに分離します。",
-  },
+  ["01", "現場で話す", "スマホで作業内容、数量、注意点をそのまま話します。"],
+  ["02", "AIが整理", "明細候補と確認すべき曖昧点を分けて下書きします。"],
+  ["03", "単価と照合", "Excel単価マスターの品目・単位・単価候補を表示します。"],
+  ["04", "確認して出力", "担当者が確認し、PDFまたはExcelで出力します。"],
 ];
 
 const FAQS = [
-  {
-    q: "AIが見積金額を自動で確定しますか？",
-    a: "いいえ。AIは明細候補を作る補助役です。最終的な品目、数量、単価、金額は担当者が確認して確定します。",
-  },
-  {
-    q: "今使っているExcelの単価表は使えますか？",
-    a: "はい。列マッピングとプレビューを通して、既存の単価表を単価マスターへ取り込む前提です。",
-  },
-  {
-    q: "業者指示事項は顧客に見えませんか？",
-    a: "顧客向けPDFには出さず、社内確認用または業者指示用のExcelにのみ含める設計です。",
-  },
-  {
-    q: "他社のデータが見える心配はありませんか？",
-    a: "会社IDとRLSを使い、ログイン中の会社に紐づくデータだけを参照・更新する設計にします。",
-  },
-  {
-    q: "打ち合わせ録音機能も含まれますか？",
-    a: "打ち合わせ録音は別オプションとして扱います。MVP本体では見積明細作成に必要な音声入力を優先します。",
-  },
+  ["AIが見積金額を自動で確定しますか？", "いいえ。AIは明細候補の下書き役です。品目、数量、単価、金額は担当者が確認して確定します。"],
+  ["今使っているExcel単価表は使えますか？", "はい。列マッピングとプレビューを通して、既存Excelを単価マスターとして使う想定です。"],
+  ["業者指示事項は顧客に見えませんか？", "顧客向けPDFには出さず、社内確認用または業者指示用Excelにのみ含める設計です。"],
+  ["本番導入前に相談できますか？", "はい。現在は先行公開中プロトタイプとして、実際の見積フローに合うか確認する段階です。"],
 ];
 
 export function Landing() {
   return (
-    <div className="min-h-screen bg-white text-slate-900">
+    <div className="min-h-screen bg-[#f6f8fb] text-slate-950">
       <SiteHeader />
       <main>
         <Hero />
+        <Examples />
         <Problem />
         <Features />
         <Flow />
-        <MasterImport />
-        <Security />
-        <Faq />
+        <Pricing />
+        <FAQ />
         <FinalCta />
       </main>
-      <SiteFooter />
+      <Footer />
     </div>
   );
 }
 
 function SiteHeader() {
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
-        <Link href="/lp" className="flex items-center gap-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 text-white">
-            <Mic className="text-lg" />
+    <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-white/90 backdrop-blur-xl">
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 lg:px-8">
+        <Link href="/" className="flex items-center gap-3" aria-label="ボイス見積 トップへ">
+          <span className="grid h-10 w-10 place-items-center rounded-2xl bg-slate-950 text-white shadow-sm">
+            <Mic className="text-xl" />
           </span>
-          <span className="text-base font-bold">ボイス見積</span>
+          <span>
+            <span className="block text-lg font-black tracking-tight">ボイス見積</span>
+            <span className="block text-[10px] font-bold uppercase tracking-[0.28em] text-slate-400">AI Estimate Draft</span>
+          </span>
         </Link>
 
-        <nav className="hidden items-center gap-6 text-sm font-medium text-slate-600 lg:flex">
+        <nav className="hidden items-center gap-7 text-sm font-bold text-slate-600 lg:flex" aria-label="主要ナビゲーション">
           {NAV.map((item) => (
-            <a key={item.href} href={item.href} className="hover:text-brand-700">
+            <a key={item.href} href={item.href} className="transition hover:text-slate-950">
               {item.label}
             </a>
           ))}
         </nav>
 
         <div className="flex items-center gap-2">
-          <Link
-            href="/blog"
-            className="hidden rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-900 sm:inline-flex"
-          >
-            お役立ち記事
-          </Link>
-          <Link
-            href="/contact"
-            className="hidden rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-900 sm:inline-flex"
-          >
+          <Link href="/contact" className="hidden rounded-full px-4 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-100 sm:inline-flex">
             相談する
           </Link>
-          <Link
-            href="/login"
-            className="inline-flex min-h-[40px] items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white hover:bg-brand-700"
-          >
-            デモを試す
-            <ChevronRight className="text-base" />
+          <Link href="/login" className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-slate-950/10 transition hover:-translate-y-0.5 hover:bg-slate-800">
+            デモを試す <ChevronRight className="text-base" />
           </Link>
         </div>
       </div>
@@ -183,164 +153,139 @@ function SiteHeader() {
 
 function Hero() {
   return (
-    <section className="relative overflow-hidden border-b border-slate-200 bg-slate-950 text-white">
-      <ProductScene />
-      <div className="relative mx-auto max-w-6xl px-5 py-16 sm:py-20 lg:py-24">
-        <div className="max-w-2xl">
-          <p className="inline-flex items-center gap-2 rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white">
-            <Sparkles className="text-sm" />
-            建設業向け 音声AI見積作成システム
-          </p>
-          <h1 className="mt-5 text-4xl font-extrabold leading-tight sm:text-5xl">
-            現場で話した内容を、
-            <span className="block text-sky-200">見積明細の下書きに。</span>
+    <section className="relative overflow-hidden bg-[#06111f] text-white">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(56,189,248,0.28),transparent_34%),radial-gradient(circle_at_80%_10%,rgba(16,185,129,0.18),transparent_30%),linear-gradient(135deg,#06111f_0%,#0b1730_52%,#0f172a_100%)]" />
+      <div className="absolute inset-0 opacity-[0.12] [background-image:linear-gradient(#fff_1px,transparent_1px),linear-gradient(90deg,#fff_1px,transparent_1px)] [background-size:48px_48px]" />
+
+      <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-5 py-20 lg:grid-cols-[1.04fr_0.96fr] lg:px-8 lg:py-28">
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-bold text-cyan-100 shadow-2xl shadow-cyan-950/30 backdrop-blur">
+            <Sparkles className="text-cyan-300" />
+            建築・リフォーム向け AI見積下書き
+          </div>
+
+          <h1 className="mt-7 max-w-4xl text-5xl font-black leading-[1.05] tracking-[-0.06em] sm:text-6xl lg:text-7xl">
+            話した現場メモを、
+            <span className="block bg-gradient-to-r from-cyan-200 via-white to-emerald-200 bg-clip-text text-transparent">
+              見積明細の下書きへ。
+            </span>
           </h1>
-          <p className="mt-5 max-w-xl text-base leading-8 text-slate-200 sm:text-lg">
-            ボイス見積は、外壁塗装・リフォーム・設備工事などの見積作成を、
-            音声入力、単価マスター照合、Excel/PDF出力まで一つの流れで支えるプロトタイプです。
+
+          <p className="mt-6 max-w-2xl text-lg font-medium leading-9 text-slate-300">
+            ボイス見積は、現場で話した内容をAIが明細候補に整理し、Excel単価マスターと照合するための見積支援プロトタイプです。AI任せではなく、人が確認しやすい下書きを作ります。
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Link
-              href="/login"
-              className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-lg bg-white px-6 text-base font-bold text-slate-950 hover:bg-slate-100"
-            >
-              デモを試す
-              <ChevronRight className="text-lg" />
+            <Link href="/login" className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-7 py-4 text-base font-black text-slate-950 shadow-xl shadow-black/20 transition hover:-translate-y-0.5 hover:bg-cyan-50">
+              デモを試す <ChevronRight />
             </Link>
-            <Link
-              href="/contact"
-              className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-lg border border-white/30 px-6 text-base font-bold text-white hover:bg-white/10"
-            >
+            <Link href="/contact" className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/10 px-7 py-4 text-base font-bold text-white backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/15">
               導入相談をする
             </Link>
           </div>
 
-          <div className="mt-8 grid gap-3 text-sm text-slate-200 sm:grid-cols-3">
-            <HeroPoint>単価表Excelを活用</HeroPoint>
-            <HeroPoint>業者指示事項を分離</HeroPoint>
-            <HeroPoint>会社別データ分離</HeroPoint>
+          <div className="mt-8 flex flex-wrap gap-2">
+            {INDUSTRIES.map((item) => (
+              <span key={item} className="rounded-full border border-white/15 bg-white/8 px-3.5 py-2 text-xs font-bold text-slate-200 backdrop-blur">
+                {item}
+              </span>
+            ))}
           </div>
+        </div>
+
+        <HeroVideo />
+      </div>
+    </section>
+  );
+}
+
+function HeroVideo() {
+  return (
+    <div id="movie" className="relative mx-auto w-full max-w-[720px] scroll-mt-28">
+      <div className="absolute -left-8 top-8 hidden rounded-3xl border border-white/15 bg-white/10 p-4 text-sm font-bold text-white shadow-2xl backdrop-blur md:block">
+        <p className="text-cyan-200">15秒デモ</p>
+        <p className="mt-1 text-slate-200">ページ表示時に自動再生</p>
+      </div>
+      <div className="absolute -right-5 bottom-12 hidden rounded-3xl border border-emerald-300/30 bg-emerald-300/15 p-4 text-sm font-bold text-emerald-50 shadow-2xl backdrop-blur md:block">
+        音声は再生ボタンから確認
+      </div>
+
+      <div className="rounded-[2rem] border border-white/15 bg-white/10 p-3 shadow-2xl shadow-black/30 backdrop-blur-xl">
+        <div className="overflow-hidden rounded-[1.55rem] bg-slate-950 shadow-2xl">
+          <div className="border-b border-white/10 bg-white/[0.06] px-4 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-300">Voice estimate movie</p>
+                <p className="mt-1 text-sm font-bold text-white">音声つき15秒デモ</p>
+              </div>
+              <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-black text-emerald-200">Auto play</span>
+            </div>
+          </div>
+          <div className="aspect-video bg-slate-950">
+            <video
+              className="h-full w-full bg-slate-950 object-contain p-1"
+              autoPlay
+              muted
+              loop
+              controls
+              preload="auto"
+              playsInline
+              poster={DEMO_VIDEO_POSTER}
+            >
+              <source src={DEMO_VIDEO_SRC} type="video/mp4" />
+              お使いのブラウザでは動画を再生できません。
+            </video>
+          </div>
+          <div className="border-t border-white/10 bg-white/[0.06] px-4 py-3 text-xs font-medium leading-6 text-slate-300">
+            ブラウザ仕様により、ページ表示時は無音で自動再生します。音声付きで確認する場合は動画の音量をオンにしてください。
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+function Examples() {
+  return (
+    <section id="examples" className="bg-white py-20">
+      <div className="mx-auto max-w-7xl px-5 lg:px-8">
+        <SectionTitle eyebrow="Examples" title="現場の話し言葉を、見積らしい粒度に整えます。">
+          外壁、内装、設備など、職人さんが普段話している内容を明細候補へ変換するイメージです。
+        </SectionTitle>
+        <div className="mt-10 grid gap-5 md:grid-cols-3">
+          {SAMPLE_ESTIMATES.map((item) => (
+            <article key={item.title} className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
+              <div className="flex items-center justify-between gap-4">
+                <h3 className="text-xl font-black tracking-tight">{item.title}</h3>
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">{item.category}</span>
+              </div>
+              <ul className="mt-5 space-y-3">
+                {item.rows.map((row) => (
+                  <li key={row} className="flex items-center gap-3 rounded-2xl bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700">
+                    <Check className="shrink-0 text-emerald-500" />
+                    {row}
+                  </li>
+                ))}
+              </ul>
+            </article>
+          ))}
         </div>
       </div>
     </section>
   );
 }
 
-function ProductScene() {
-  return (
-    <div className="pointer-events-none absolute inset-0 opacity-85">
-      <div className="absolute inset-y-10 right-[-120px] hidden w-[680px] lg:block">
-        <div className="rounded-lg border border-white/15 bg-white/10 p-4 shadow-2xl backdrop-blur">
-          <div className="flex items-center justify-between border-b border-white/15 pb-3">
-            <div>
-              <div className="text-xs text-slate-300">見積編集</div>
-              <div className="mt-1 text-lg font-bold text-white">外壁塗装 A様邸</div>
-            </div>
-            <span className="rounded-lg bg-emerald-400/20 px-3 py-1 text-xs font-bold text-emerald-100">
-              AI候補確認中
-            </span>
-          </div>
-          <div className="mt-4 grid gap-3">
-            {[
-              ["外壁", "シリコン塗装", "180㎡", "432,000円"],
-              ["足場", "くさび式足場", "210㎡", "189,000円"],
-              ["屋根", "高圧洗浄", "95㎡", "42,750円"],
-            ].map((row) => (
-              <div
-                key={row.join("-")}
-                className="grid grid-cols-[1fr_1.4fr_.8fr_1fr] gap-3 rounded-lg border border-white/10 bg-white/12 px-4 py-3 text-sm text-white"
-              >
-                {row.map((cell) => (
-                  <span key={cell}>{cell}</span>
-                ))}
-              </div>
-            ))}
-          </div>
-          <div className="mt-4 rounded-lg border border-amber-300/30 bg-amber-200/15 p-3 text-sm text-amber-50">
-            業者指示事項: 北面の下地補修を先に確認。顧客向けPDFには非表示。
-          </div>
-        </div>
-      </div>
-
-      <div className="absolute bottom-8 right-8 hidden w-56 rounded-[2rem] border-[8px] border-slate-900 bg-slate-900 shadow-2xl md:block">
-        <div className="rounded-[1.35rem] bg-white p-4 text-slate-900">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold">録音中</span>
-            <span className="h-2 w-2 rounded-full bg-rose-500" />
-          </div>
-          <div className="my-6 flex justify-center">
-            <span className="flex h-20 w-20 items-center justify-center rounded-full bg-rose-500 text-white">
-              <Mic className="text-3xl" />
-            </span>
-          </div>
-          <div className="flex h-10 items-center justify-center gap-1">
-            {[12, 24, 18, 32, 16, 28, 36, 20, 14].map((h, i) => (
-              <span
-                key={`${h}-${i}`}
-                className="w-1.5 rounded-full bg-brand-500"
-                style={{ height: `${h}px` }}
-              />
-            ))}
-          </div>
-          <div className="mt-4 rounded-lg bg-violet-50 p-2 text-xs font-medium text-violet-700">
-            AIが明細候補を作成しています
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function HeroPoint({ children }: { children: ReactNode }) {
-  return (
-    <div className="flex items-center gap-2">
-      <Check className="shrink-0 text-emerald-300" />
-      <span>{children}</span>
-    </div>
-  );
-}
-
-function SectionHeading({
-  eyebrow,
-  title,
-  desc,
-  center,
-}: {
-  eyebrow: string;
-  title: string;
-  desc?: string;
-  center?: boolean;
-}) {
-  return (
-    <div className={center ? "mx-auto max-w-2xl text-center" : "max-w-2xl"}>
-      <p className="text-xs font-bold text-brand-700">{eyebrow}</p>
-      <h2 className="mt-2 text-2xl font-extrabold leading-tight text-slate-900 sm:text-3xl">
-        {title}
-      </h2>
-      {desc && <p className="mt-3 text-sm leading-7 text-slate-600 sm:text-base">{desc}</p>}
-    </div>
-  );
-}
-
 function Problem() {
   return (
-    <section id="problem" className="scroll-mt-20 bg-slate-50 py-16 sm:py-20">
-      <div className="mx-auto max-w-6xl px-5">
-        <SectionHeading
-          eyebrow="見積業務の課題"
-          title="見積が遅れる原因は、現場情報と単価情報が分かれていることです。"
-          desc="建設業の見積は、現場で聞いた内容、社内の単価表、業者への指示、顧客向けの表現が混ざりやすい業務です。"
-        />
-        <div className="mt-8 grid gap-4 md:grid-cols-3">
-          {PROBLEMS.map((item, index) => (
-            <div key={item.title} className="rounded-lg border border-slate-200 bg-white p-5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-50 text-sm font-bold text-rose-700">
-                {index + 1}
-              </div>
-              <h3 className="mt-4 text-base font-bold text-slate-900">{item.title}</h3>
-              <p className="mt-2 text-sm leading-7 text-slate-600">{item.body}</p>
-            </div>
+    <section id="problem" className="bg-[#f6f8fb] py-20">
+      <div className="mx-auto max-w-7xl px-5 lg:px-8">
+        <SectionTitle eyebrow="Problem" title="見積作成で止まりやすい場所を、先に整えます。" />
+        <div className="mt-10 grid gap-5 md:grid-cols-3">
+          {PROBLEMS.map(([title, body], index) => (
+            <article key={title} className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
+              <span className="text-sm font-black text-cyan-600">0{index + 1}</span>
+              <h3 className="mt-4 text-2xl font-black tracking-tight">{title}</h3>
+              <p className="mt-3 text-sm font-medium leading-7 text-slate-600">{body}</p>
+            </article>
           ))}
         </div>
       </div>
@@ -350,22 +295,16 @@ function Problem() {
 
 function Features() {
   return (
-    <section id="features" className="scroll-mt-20 py-16 sm:py-20">
-      <div className="mx-auto max-w-6xl px-5">
-        <SectionHeading
-          eyebrow="主要機能"
-          title="音声、単価、出力の流れを見積業務に合わせてつなぎます。"
-          desc="AIに任せる部分と、人が確認する部分を分け、現場で使いやすい見積作成フローを目指します。"
-        />
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <section id="features" className="bg-white py-20">
+      <div className="mx-auto max-w-7xl px-5 lg:px-8">
+        <SectionTitle eyebrow="Features" title="AIの便利さと、見積業務の慎重さを両立します。" />
+        <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map((feature) => (
-            <div key={feature.title} className="rounded-lg border border-slate-200 bg-white p-5">
-              <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
-                {feature.icon}
-              </span>
-              <h3 className="mt-4 text-base font-bold text-slate-900">{feature.title}</h3>
-              <p className="mt-2 text-sm leading-7 text-slate-600">{feature.body}</p>
-            </div>
+            <article key={feature.title} className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-[0_18px_50px_rgba(15,23,42,0.06)] transition hover:-translate-y-1 hover:shadow-[0_24px_70px_rgba(15,23,42,0.1)]">
+              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-slate-950 text-white">{feature.icon}</div>
+              <h3 className="mt-5 text-xl font-black tracking-tight">{feature.title}</h3>
+              <p className="mt-3 text-sm font-medium leading-7 text-slate-600">{feature.body}</p>
+            </article>
           ))}
         </div>
       </div>
@@ -375,20 +314,16 @@ function Features() {
 
 function Flow() {
   return (
-    <section id="flow" className="scroll-mt-20 bg-slate-50 py-16 sm:py-20">
-      <div className="mx-auto max-w-6xl px-5">
-        <SectionHeading
-          eyebrow="作成フロー"
-          title="見積ヘッダは手入力、明細だけをAIで支援します。"
-          desc="顧客情報や担当者などの重要なヘッダ情報はAIで埋めず、見積明細の下書き作成にAIを使います。"
-        />
-        <div className="mt-8 grid gap-4 lg:grid-cols-4">
-          {STEPS.map((step) => (
-            <div key={step.no} className="rounded-lg border border-slate-200 bg-white p-5">
-              <div className="text-sm font-bold text-brand-700">{step.no}</div>
-              <h3 className="mt-3 text-base font-bold text-slate-900">{step.title}</h3>
-              <p className="mt-2 text-sm leading-7 text-slate-600">{step.body}</p>
-            </div>
+    <section id="flow" className="bg-[#f6f8fb] py-20">
+      <div className="mx-auto max-w-7xl px-5 lg:px-8">
+        <SectionTitle eyebrow="Flow" title="現場から提出前チェックまで、4ステップで。" />
+        <div className="mt-10 grid gap-5 lg:grid-cols-4">
+          {STEPS.map(([no, title, body]) => (
+            <article key={no} className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-950 text-sm font-black text-white">{no}</span>
+              <h3 className="mt-6 text-xl font-black tracking-tight">{title}</h3>
+              <p className="mt-3 text-sm font-medium leading-7 text-slate-600">{body}</p>
+            </article>
           ))}
         </div>
       </div>
@@ -396,134 +331,49 @@ function Flow() {
   );
 }
 
-function MasterImport() {
+function Pricing() {
   return (
-    <section className="py-16 sm:py-20">
-      <div className="mx-auto grid max-w-6xl gap-10 px-5 lg:grid-cols-[1fr_1.1fr] lg:items-center">
+    <section id="pricing" className="bg-white py-20">
+      <div className="mx-auto grid max-w-7xl gap-8 px-5 lg:grid-cols-[0.85fr_1.15fr] lg:px-8">
         <div>
-          <SectionHeading
-            eyebrow="Excel単価表を活用"
-            title="今ある単価表を、AI見積の判断材料にします。"
-            desc="品目、単位、単価、外部品目IDを単価マスターとして整備。AIが音声から品目候補を推測し、単価マスターの候補を表示します。"
-          />
-          <div className="mt-6 flex flex-col gap-3">
-            <PlainCheck>列マッピングで既存Excelを取り込み</PlainCheck>
-            <PlainCheck>プレビューで重複や単価不正を確認</PlainCheck>
-            <PlainCheck>外部システム連携用の独自IDを保持</PlainCheck>
-          </div>
-        </div>
-
-        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-          <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
-            <div className="flex items-center gap-2 font-bold text-slate-900">
-              <Upload className="text-brand-700" />
-              単価マスター取込
-            </div>
-            <span className="rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
-              128件確認済み
-            </span>
-          </div>
-          <div className="grid grid-cols-4 border-b border-slate-200 bg-slate-50 px-5 py-2 text-xs font-bold text-slate-500">
-            <span>品目</span>
-            <span>単位</span>
-            <span>単価</span>
-            <span>外部ID</span>
-          </div>
-          {[
-            ["シリコン塗装", "㎡", "2,400", "PAINT-001"],
-            ["高圧洗浄", "㎡", "450", "WASH-012"],
-            ["くさび式足場", "㎡", "900", "SCAFF-004"],
-          ].map((row) => (
-            <div
-              key={row.join("-")}
-              className="grid grid-cols-4 border-b border-slate-100 px-5 py-3 text-sm text-slate-700 last:border-b-0"
-            >
-              {row.map((cell) => (
-                <span key={cell}>{cell}</span>
-              ))}
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function Security() {
-  return (
-    <section id="security" className="scroll-mt-20 bg-slate-950 py-16 text-white sm:py-20">
-      <div className="mx-auto grid max-w-6xl gap-10 px-5 lg:grid-cols-2 lg:items-center">
-        <div>
-          <p className="text-xs font-bold text-sky-200">安全設計</p>
-          <h2 className="mt-2 text-2xl font-extrabold leading-tight sm:text-3xl">
-            顧客向け情報と社内向け情報を、最初から分けて扱います。
-          </h2>
-          <p className="mt-4 text-sm leading-7 text-slate-200 sm:text-base">
-            会社別データ分離、業者指示事項の非表示制御、AI候補の人間確認を前提にした設計です。
-            見積業務のスピードだけでなく、情報漏れの不安を減らすことを重視します。
+          <SectionTitle eyebrow="Pricing" title="まずは先行相談から。" />
+          <p className="mt-5 text-base font-medium leading-8 text-slate-600">
+            現在はプロトタイプ公開中です。単価表、帳票、社内確認フローを見ながら、最小構成で導入イメージを作ります。
           </p>
         </div>
-
-        <div className="grid gap-3">
-          <SecurityRow
-            icon={<Building />}
-            title="会社別データ分離"
-            body="ログイン中の会社に紐づくデータだけを参照します。"
-          />
-          <SecurityRow
-            icon={<EyeOff />}
-            title="業者指示事項の出力制御"
-            body="PDFには出さず、Excelでは内部確認用として出力します。"
-          />
-          <SecurityRow
-            icon={<Search />}
-            title="AI候補は確認後に反映"
-            body="AI結果をそのまま確定せず、担当者の確認を通します。"
-          />
+        <div className="rounded-[2rem] border border-slate-200 bg-slate-950 p-6 text-white shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.24em] text-cyan-300">Prototype</p>
+              <h3 className="mt-2 text-4xl font-black tracking-tight">個別見積</h3>
+              <p className="mt-3 text-sm font-medium text-slate-300">業種、単価表、出力帳票に合わせて相談</p>
+            </div>
+            <Link href="/contact" className="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-black text-slate-950 transition hover:-translate-y-0.5 hover:bg-cyan-50">
+              相談する
+            </Link>
+          </div>
+          <ul className="mt-6 grid gap-3 text-sm font-bold text-slate-200 sm:grid-cols-2">
+            {["単価表Excelの確認", "明細候補の項目設計", "PDF/Excel出力形式", "会社別データ分離", "SEO公開ページ", "AI生成記事の自動化相談"].map((item) => (
+              <li key={item} className="flex gap-2"><Check className="mt-0.5 shrink-0 text-emerald-300" />{item}</li>
+            ))}
+          </ul>
         </div>
       </div>
     </section>
   );
 }
 
-function SecurityRow({
-  icon,
-  title,
-  body,
-}: {
-  icon: ReactNode;
-  title: string;
-  body: string;
-}) {
+function FAQ() {
   return (
-    <div className="flex gap-4 rounded-lg border border-white/15 bg-white/10 p-4">
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-brand-700">
-        {icon}
-      </span>
-      <div>
-        <h3 className="font-bold text-white">{title}</h3>
-        <p className="mt-1 text-sm leading-6 text-slate-200">{body}</p>
-      </div>
-    </div>
-  );
-}
-
-function Faq() {
-  return (
-    <section id="faq" className="scroll-mt-20 py-16 sm:py-20">
-      <div className="mx-auto max-w-4xl px-5">
-        <SectionHeading
-          eyebrow="FAQ"
-          title="よくある質問"
-          desc="導入前に確認されやすいポイントをまとめました。"
-          center
-        />
-        <div className="mt-8 divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
-          {FAQS.map((faq) => (
-            <div key={faq.q} className="p-5">
-              <h3 className="font-bold text-slate-900">{faq.q}</h3>
-              <p className="mt-2 text-sm leading-7 text-slate-600">{faq.a}</p>
-            </div>
+    <section id="faq" className="bg-[#f6f8fb] py-20">
+      <div className="mx-auto max-w-5xl px-5 lg:px-8">
+        <SectionTitle eyebrow="FAQ" title="よくある質問" center />
+        <div className="mt-10 space-y-4">
+          {FAQS.map(([q, a]) => (
+            <details key={q} className="group rounded-3xl border border-slate-200 bg-white p-5 shadow-sm open:shadow-md">
+              <summary className="cursor-pointer list-none text-lg font-black tracking-tight text-slate-950">{q}</summary>
+              <p className="mt-3 text-sm font-medium leading-7 text-slate-600">{a}</p>
+            </details>
           ))}
         </div>
       </div>
@@ -533,26 +383,21 @@ function Faq() {
 
 function FinalCta() {
   return (
-    <section className="bg-slate-50 px-5 py-16 sm:py-20">
-      <div className="mx-auto max-w-4xl rounded-lg border border-slate-200 bg-white p-8 text-center sm:p-10">
-        <h2 className="text-2xl font-extrabold leading-tight text-slate-900 sm:text-3xl">
-          まずは、現場の見積フローに合うか確認しましょう。
+    <section className="bg-white px-5 py-20">
+      <div className="mx-auto max-w-6xl overflow-hidden rounded-[2.25rem] bg-[radial-gradient(circle_at_18%_20%,rgba(34,211,238,0.22),transparent_28%),linear-gradient(135deg,#06111f,#0f172a)] p-8 text-center text-white shadow-[0_30px_100px_rgba(15,23,42,0.28)] sm:p-12">
+        <p className="text-sm font-black uppercase tracking-[0.24em] text-cyan-300">Next step</p>
+        <h2 className="mx-auto mt-4 max-w-3xl text-4xl font-black tracking-[-0.04em] sm:text-5xl">
+          まず1件の見積フローで、使えるか確認しましょう。
         </h2>
-        <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
-          単価マスター、音声入力、業者指示事項、Excel/PDF出力まで、実際の運用に合わせて確認できます。
+        <p className="mx-auto mt-5 max-w-2xl text-base font-medium leading-8 text-slate-300">
+          単価表、見積書テンプレート、業者指示の出し分けを確認しながら、導入判断できる形に整えます。
         </p>
-        <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
-          <Link
-            href="/contact"
-            className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-lg bg-brand-600 px-6 text-base font-bold text-white hover:bg-brand-700"
-          >
-            導入相談をする
+        <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+          <Link href="/login" className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-7 py-4 text-base font-black text-slate-950 transition hover:-translate-y-0.5 hover:bg-cyan-50">
+            デモを試す <ChevronRight />
           </Link>
-          <Link
-            href="/login"
-            className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-lg border border-slate-300 px-6 text-base font-bold text-slate-700 hover:bg-slate-50"
-          >
-            デモを試す
+          <Link href="/contact" className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/10 px-7 py-4 text-base font-bold text-white backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/15">
+            導入相談をする
           </Link>
         </div>
       </div>
@@ -560,54 +405,26 @@ function FinalCta() {
   );
 }
 
-function PlainCheck({ children }: { children: ReactNode }) {
+function SectionTitle({ eyebrow, title, children, dark, center }: { eyebrow: string; title: string; children?: ReactNode; dark?: boolean; center?: boolean }) {
   return (
-    <div className="flex items-start gap-2 text-sm leading-7 text-slate-700">
-      <Check className="mt-1 shrink-0 text-emerald-600" />
-      <span>{children}</span>
+    <div className={center ? "mx-auto max-w-3xl text-center" : "max-w-3xl"}>
+      <p className={"text-sm font-black uppercase tracking-[0.28em] " + (dark ? "text-cyan-300" : "text-cyan-700")}>{eyebrow}</p>
+      <h2 className={"mt-3 text-3xl font-black leading-tight tracking-[-0.04em] sm:text-5xl " + (dark ? "text-white" : "text-slate-950")}>{title}</h2>
+      {children ? <div className={"mt-4 text-base font-medium leading-8 " + (dark ? "text-slate-300" : "text-slate-600")}>{children}</div> : null}
     </div>
   );
 }
 
-function SiteFooter() {
+function Footer() {
   return (
-    <footer className="border-t border-slate-200 bg-white">
-      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-5 py-10 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-white">
-              <Mic className="text-base" />
-            </span>
-            <span className="font-bold">ボイス見積</span>
-          </div>
-          <p className="mt-2 text-xs text-slate-500">
-            建設業向け 音声AI見積作成システム
-          </p>
+    <footer className="border-t border-slate-200 bg-white px-5 py-8">
+      <div className="mx-auto flex max-w-7xl flex-col gap-4 text-sm font-medium text-slate-500 sm:flex-row sm:items-center sm:justify-between lg:px-8">
+        <p>© 2026 ボイス見積</p>
+        <div className="flex flex-wrap gap-4">
+          <Link href="/contact" className="hover:text-slate-950">お問い合わせ</Link>
+          <Link href="/tokushoho" className="hover:text-slate-950">特定商取引法に基づく表記</Link>
+          <Link href="/privacy" className="hover:text-slate-950">プライバシーポリシー</Link>
         </div>
-
-        <nav className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-600">
-          <Link href="/blog" className="hover:text-brand-700">
-            お役立ち記事
-          </Link>
-          <Link href="/contact" className="hover:text-brand-700">
-            お問い合わせ
-          </Link>
-          <Link href="/tokushoho" className="hover:text-brand-700">
-            特定商取引法に基づく表記
-          </Link>
-          <Link href="/privacy" className="hover:text-brand-700">
-            プライバシーポリシー
-          </Link>
-          <Link href="/terms" className="hover:text-brand-700">
-            利用規約
-          </Link>
-          <Link href="/login" className="hover:text-brand-700">
-            ログイン
-          </Link>
-        </nav>
-      </div>
-      <div className="border-t border-slate-100 py-4 text-center text-xs text-slate-400">
-        © 2026 ボイス見積
       </div>
     </footer>
   );

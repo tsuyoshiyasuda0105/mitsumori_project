@@ -19,6 +19,14 @@ export const metadata: Metadata = {
     url: "/blog",
     title: `${TITLE} | ボイス見積`,
     description: DESC,
+    images: [
+      {
+        url: "/og-image.svg",
+        width: 1200,
+        height: 630,
+        alt: "ボイス見積 お役立ち記事",
+      },
+    ],
   },
   robots: { index: true, follow: true },
 };

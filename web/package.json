@@ -6,9 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "content:draft": "node ../marketing/content-automation/scripts/generate-draft.mjs",
+    "content:draft:dry": "node ../marketing/content-automation/scripts/generate-draft.mjs --dry-run --no-ai",
+    "content:next": "node ../marketing/content-automation/scripts/generate-draft.mjs --check-only"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
     "next": "14.2.15",
     "react": "18.3.1",
     "react-dom": "18.3.1"

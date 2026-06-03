@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { FocusHeader } from "@/components/FocusHeader";
 import { MobileActionBar } from "@/components/MobileActionBar";
 import {
@@ -23,8 +24,9 @@ import {
   StatusBadge,
 } from "@/components/ui";
 import { computeTotals, lineAmount, TAX_RATE } from "@/lib/calc";
+import { useEstimateStore } from "@/lib/estimate-store";
 import { fmtDate, yen } from "@/lib/format";
-import { customers } from "@/lib/mock";
+import { customers, priceItems } from "@/lib/mock";
 import type {
   Estimate,
   EstimateLine,
@@ -48,6 +50,16 @@ function newLine(type: LineType, lineNo: number): EstimateLine {
   };
 }
 
+function patchFromPriceItemName(name: string): Partial<EstimateLine> {
+  const item = priceItems.find((candidate) => candidate.name === name);
+  if (!item) return { itemName: name, priceItemId: undefined };
+  return {
+    priceItemId: item.id,
+    itemName: item.name,
+    unit: item.unit,
+    unitPrice: item.unitPrice,
+  };
+}
 export function EstimateEditor({
   initial,
   isNew,
@@ -55,6 +67,11 @@ export function EstimateEditor({
   initial: Estimate;
   isNew: boolean;
 }) {
+  const router = useRouter();
+  const { ready, getEstimate, saveEstimate } = useEstimateStore();
+  const [currentId, setCurrentId] = useState(initial.id);
+  const [estimateNo, setEstimateNo] = useState(initial.estimateNo);
+  const [localIsNew, setLocalIsNew] = useState(isNew);
   const [customerId, setCustomerId] = useState(initial.customerId ?? "");
   const [title, setTitle] = useState(initial.title);
   const [estimateDate, setEstimateDate] = useState(initial.estimateDate);
@@ -70,6 +87,31 @@ export function EstimateEditor({
   const [savedAt, setSavedAt] = useState<string | null>(
     isNew ? null : "保存済み",
   );
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const applyEstimate = (estimate: Estimate) => {
+    setCurrentId(estimate.id);
+    setEstimateNo(estimate.estimateNo);
+    setCustomerId(estimate.customerId ?? "");
+    setTitle(estimate.title);
+    setEstimateDate(estimate.estimateDate);
+    setExpiresOn(estimate.expiresOn);
+    setAssignee(estimate.assignee);
+    setStatus(estimate.status);
+    setLines(estimate.lines);
+    setCustomerNote(estimate.customerNote);
+    setInternalInstruction(estimate.internalInstruction);
+  };
+
+  useEffect(() => {
+    if (!ready) return;
+    const stored = getEstimate(initial.id);
+    if (!stored) return;
+    applyEstimate(stored);
+    setLocalIsNew(false);
+    setSavedAt("保存済み");
+  }, [ready, getEstimate, initial.id]);
 
   const renumber = (arr: EstimateLine[]) =>
     arr.map((l, i) => ({ ...l, lineNo: i + 1 }));
@@ -116,24 +158,58 @@ export function EstimateEditor({
     };
   }, [lines]);
 
-  const save = () =>
-    setSavedAt(
-      `保存済み ${new Date().toLocaleTimeString("ja-JP", {
-        hour: "2-digit",
-        minute: "2-digit",
-      })}`,
-    );
+  const buildCurrentEstimate = (): Estimate => ({
+    ...initial,
+    id: currentId,
+    estimateNo,
+    customerId: customerId || undefined,
+    title,
+    estimateDate,
+    expiresOn,
+    status,
+    assignee,
+    lines,
+    customerNote,
+    internalInstruction,
+  });
+
+  const save = async () => {
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      const saved = await saveEstimate(buildCurrentEstimate());
+      setCurrentId(saved.id);
+      setEstimateNo(saved.estimateNo);
+      setLocalIsNew(false);
+      setSavedAt(
+        `保存済み ${new Date(saved.updatedAt).toLocaleTimeString("ja-JP", {
+          hour: "2-digit",
+          minute: "2-digit",
+        })}`,
+      );
+      if (saved.id !== currentId) router.replace(`/estimates/${saved.id}/edit`);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "見積を保存できませんでした。");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const noCustomer = !customerId;
 
   return (
     <div>
+      <datalist id="price-item-options">
+        {priceItems.map((item) => (
+          <option key={item.id} value={item.name} label={`${yen(item.unitPrice)} / ${item.unit}`} />
+        ))}
+      </datalist>
       <FocusHeader
         icon={<FileText className="text-lg" />}
-        title={isNew ? "新規見積" : "見積編集"}
+        title={localIsNew ? "新規見積" : "見積編集"}
         subtitle={
           <span className="flex items-center gap-1.5">
-            {initial.estimateNo}
+            {estimateNo}
             <span className="text-slate-300">·</span>
             {savedAt ? (
               <span className="text-emerald-600">{savedAt}</span>
@@ -145,7 +221,12 @@ export function EstimateEditor({
         trailing={<StatusBadge status={status} />}
       />
 
-      {isNew && (
+      {saveError && (
+        <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+          {saveError}
+        </div>
+      )}
+      {localIsNew && (
         <div className="mb-4 flex items-start gap-2 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-800">
           <Sparkles className="mt-0.5 shrink-0 text-base" />
           <p>
@@ -430,8 +511,8 @@ export function EstimateEditor({
               <Link href="./export" className="btn-primary w-full">
                 出力設定へ
               </Link>
-              <button className="btn-secondary w-full" onClick={save}>
-                下書き保存
+              <button className="btn-secondary w-full" onClick={save} disabled={isSaving}>
+                {isSaving ? "保存中..." : "下書き保存"}
               </button>
             </div>
           </section>
@@ -440,8 +521,8 @@ export function EstimateEditor({
 
       {/* モバイル下部固定 */}
       <MobileActionBar>
-        <button className="btn-secondary flex-1" onClick={save}>
-          下書き保存
+        <button className="btn-secondary flex-1" onClick={save} disabled={isSaving}>
+          {isSaving ? "保存中..." : "下書き保存"}
         </button>
         <Link href="./export" className="btn-primary flex-[2]">
           出力設定へ
@@ -566,8 +647,9 @@ function LineTableRow({
           <input
             className={cell + " font-medium"}
             value={line.itemName}
+            list="price-item-options"
             placeholder="品目"
-            onChange={(e) => onChange({ itemName: e.target.value })}
+            onChange={(e) => onChange(patchFromPriceItemName(e.target.value))}
           />
         </td>
         <td className="px-1 py-1.5">
@@ -742,7 +824,8 @@ function LineCard({
           <input
             className="field-input font-medium"
             value={line.itemName}
-            onChange={(e) => onChange({ itemName: e.target.value })}
+            list="price-item-options"
+            onChange={(e) => onChange(patchFromPriceItemName(e.target.value))}
           />
         </div>
         <div>

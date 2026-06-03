@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { EstimateCard } from "@/components/EstimateCard";
-import { FileText, Plus, Search } from "@/components/icons";
+import { FileText, Plus, Search, Trash } from "@/components/icons";
 import { EmptyState, PageHeader, StatusBadge } from "@/components/ui";
 import { computeTotals } from "@/lib/calc";
+import { useEstimateStore } from "@/lib/estimate-store";
 import { fmtDate, yen } from "@/lib/format";
-import { customerName, estimates } from "@/lib/mock";
+import { customerName } from "@/lib/mock";
 import { type EstimateStatus, STATUS_LABEL } from "@/lib/types";
 
 type Filter = "all" | EstimateStatus;
@@ -23,6 +24,7 @@ const FILTERS: { id: Filter; label: string }[] = [
 export function EstimateList() {
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
+  const { ready, backendMode, syncError, estimates, savedEstimates, localSavedEstimates, resetSavedEstimates } = useEstimateStore();
 
   const rows = useMemo(() => {
     const kw = q.trim().toLowerCase();
@@ -35,7 +37,7 @@ export function EstimateList() {
         customerName(e.customerId).toLowerCase().includes(kw)
       );
     });
-  }, [q, filter]);
+  }, [q, filter, estimates]);
 
   return (
     <div>
@@ -43,7 +45,7 @@ export function EstimateList() {
         className="mb-4"
         icon={<FileText className="text-xl" />}
         title="見積一覧"
-        description="作成中・提出済みの見積をまとめて管理します。"
+        description="作成中・提出済みの見積をまとめて管理します。DB設定後は本番データとして保存されます。"
         actions={
           <Link href="/estimates/new/edit" className="btn-primary">
             <Plus className="text-base" />
@@ -52,7 +54,28 @@ export function EstimateList() {
         }
       />
 
-      {/* 検索・絞り込み */}
+      <div className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+        <span className="font-bold">保存機能:</span>
+        <span>
+          {!ready || backendMode === "checking"
+            ? "保存先を確認中..."
+            : backendMode === "database"
+              ? `Neon DBに ${savedEstimates.length} 件保存済み`
+              : `このブラウザに ${savedEstimates.length} 件保存済み`}
+        </span>
+        {syncError && <span className="text-xs text-amber-700">DB未接続: {syncError}</span>}
+        {backendMode !== "database" && localSavedEstimates.length > 0 && (
+          <button
+            type="button"
+            onClick={resetSavedEstimates}
+            className="ml-auto inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-100"
+          >
+            <Trash className="text-sm" />
+            保存デモをリセット
+          </button>
+        )}
+      </div>
+
       <div className="mb-4 space-y-3">
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-slate-400" />
@@ -87,7 +110,6 @@ export function EstimateList() {
         />
       ) : (
         <>
-          {/* PC: テーブル */}
           <div className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white lg:block">
             <table className="w-full text-sm">
               <thead>
@@ -103,9 +125,7 @@ export function EstimateList() {
               </thead>
               <tbody>
                 {rows.map((e) => {
-                  const total = e.lines.length
-                    ? computeTotals(e.lines).total
-                    : null;
+                  const total = e.lines.length ? computeTotals(e.lines).total : null;
                   return (
                     <tr
                       key={e.id}
@@ -140,7 +160,6 @@ export function EstimateList() {
             </table>
           </div>
 
-          {/* モバイル: カード */}
           <div className="space-y-3 lg:hidden">
             {rows.map((e) => (
               <EstimateCard key={e.id} estimate={e} />

@@ -10,7 +10,7 @@ export default function BlogLayout({
     <div className="flex min-h-screen flex-col bg-white text-slate-900">
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-5">
-          <Link href="/lp" className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2">
             <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 text-white">
               <Mic className="text-lg" />
             </span>
@@ -52,7 +52,7 @@ export default function BlogLayout({
             <span className="font-bold">ボイス見積</span>
           </div>
           <nav className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-600">
-            <Link href="/lp" className="hover:text-brand-700">
+            <Link href="/" className="hover:text-brand-700">
               トップ
             </Link>
             <Link href="/blog" className="hover:text-brand-700">
