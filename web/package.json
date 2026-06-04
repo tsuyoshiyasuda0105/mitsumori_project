@@ -9,7 +9,8 @@
     "lint": "next lint",
     "content:draft": "node ../marketing/content-automation/scripts/generate-draft.mjs",
     "content:draft:dry": "node ../marketing/content-automation/scripts/generate-draft.mjs --dry-run --no-ai",
-    "content:next": "node ../marketing/content-automation/scripts/generate-draft.mjs --check-only"
+    "content:next": "node ../marketing/content-automation/scripts/generate-draft.mjs --check-only",
+    "note:prepare": "node ../marketing/content-automation/scripts/prepare-note-publish.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
@@ -27,3 +28,5 @@
     "typescript": "5.5.3"
   }
 }
+
+

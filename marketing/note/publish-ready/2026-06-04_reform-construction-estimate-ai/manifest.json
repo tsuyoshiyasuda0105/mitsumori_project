@@ -1,0 +1,24 @@
+{
+  "title": "リフォーム工事の見積作成を早くするには、AIより先に単価マスターを整える",
+  "source": "marketing/note/02_reform_construction_estimate_ai_note.md",
+  "output": "marketing/note/publish-ready/2026-06-04_reform-construction-estimate-ai",
+  "platform": "note",
+  "status": "ready-for-manual-review",
+  "sourceBlog": "https://web-beryl-one-79.vercel.app/blog/reform-construction-estimate-ai",
+  "ctaUrl": "https://web-beryl-one-79.vercel.app/login",
+  "thumbnail": "marketing/note/publish-ready/2026-06-04_reform-construction-estimate-ai/note-thumbnail-reform-construction-ai.png",
+  "thumbnailSource": "marketing/note/assets/note-thumbnail-reform-construction-ai.png",
+  "hashtags": [
+    "#リフォーム工事",
+    "#見積作成",
+    "#建設業DX",
+    "#AI活用",
+    "#単価マスター",
+    "#業務効率化",
+    "#ボイス見積"
+  ],
+  "warnings": [
+    "noteログインと公開ボタンは人が確認する",
+    "動画URLをYouTube限定公開に差し替える場合は本文内のサンプル動画セクションを確認する"
+  ]
+}
