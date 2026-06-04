@@ -33,3 +33,6 @@ yarn-error.log*
 
 # generated local video/python dependencies
 tools/py_video_deps/
+
+# browser automation artifacts
+.playwright-mcp/
