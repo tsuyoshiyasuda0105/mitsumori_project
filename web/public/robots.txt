@@ -1,6 +1,9 @@
 User-agent: *
 Allow: /
 Disallow: /dashboard
+Disallow: /app
+Disallow: /top
+Disallow: /TOP
 Disallow: /customers
 Disallow: /estimates
 Disallow: /import
