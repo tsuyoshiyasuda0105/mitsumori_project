@@ -1,3 +1,6 @@
+import fs from "node:fs";
+import path from "node:path";
+
 export type ContentBlock =
   | { type: "lead"; text: string }
   | { type: "p"; text: string }
@@ -18,454 +21,159 @@ export interface BlogPost {
   body: ContentBlock[];
 }
 
-export const BLOG_POSTS: BlogPost[] = [
-  {
-    slug: "reform-construction-estimate-ai",
-    title: "リフォーム工事の見積作成を早くする方法｜AI音声入力と単価マスター活用",
-    description:
-      "リフォーム工事の見積作成は、現場メモ、定番品目、単価確認を分けて整えると早くなります。AI音声入力と単価マスターを使った時短の考え方を解説します。",
-    date: "2026-06-03",
-    tags: ["リフォーム工事", "AI見積", "単価マスター", "リフォーム"],
-    body: [
+function stripQuotes(value: string): string {
+  return value.trim().replace(/^['"]|['"]$/g, "");
+}
+
+function parseFrontmatter(markdown: string): Record<string, string> {
+  if (!markdown.startsWith("---")) return {};
+  const end = markdown.indexOf("\n---", 3);
+  if (end < 0) return {};
+  const frontmatter = markdown.slice(3, end).trim();
+  const meta: Record<string, string> = {};
+  for (const line of frontmatter.split(/\r?\n/)) {
+    const matched = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
+    if (matched) meta[matched[1]] = stripQuotes(matched[2]);
+  }
+  return meta;
+}
+
+function stripFrontmatter(markdown: string): string {
+  if (!markdown.startsWith("---")) return markdown.trim();
+  const end = markdown.indexOf("\n---", 3);
+  if (end < 0) return markdown.trim();
+  return markdown.slice(end + "\n---".length).trim();
+}
+
+function markdownToBlocks(markdown: string): ContentBlock[] {
+  const lines = stripFrontmatter(markdown)
+    .split(/\r?\n/)
+    .filter((line) => !line.trim().startsWith("!["));
+  const blocks: ContentBlock[] = [];
+  let paragraph: string[] = [];
+
+  const flushParagraph = () => {
+    const text = paragraph.join(" ").trim();
+    if (text) blocks.push(blocks.length === 0 ? { type: "lead", text } : { type: "p", text });
+    paragraph = [];
+  };
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i].trim();
+    if (!line) {
+      flushParagraph();
+      continue;
+    }
+    if (line.startsWith("# ")) continue;
+    if (line.startsWith("## ")) {
+      flushParagraph();
+      blocks.push({ type: "h2", text: line.replace(/^##\s+/, "") });
+      continue;
+    }
+    if (line.startsWith("### ")) {
+      flushParagraph();
+      blocks.push({ type: "h3", text: line.replace(/^###\s+/, "") });
+      continue;
+    }
+    if (line.startsWith("|")) {
+      flushParagraph();
+      const tableLines: string[] = [];
+      while (i < lines.length && lines[i].trim().startsWith("|")) {
+        tableLines.push(lines[i].trim());
+        i += 1;
+      }
+      i -= 1;
+      const rows = tableLines
+        .filter((tableLine) => !/^\|\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?$/.test(tableLine))
+        .map((tableLine) =>
+          tableLine
+            .replace(/^\||\|$/g, "")
+            .split("|")
+            .map((cell) => cell.trim()),
+        );
+      const [headers, ...bodyRows] = rows;
+      if (headers && bodyRows.length > 0) blocks.push({ type: "table", headers, rows: bodyRows });
+      continue;
+    }
+    if (/^-\s+/.test(line)) {
+      flushParagraph();
+      const items: string[] = [];
+      while (i < lines.length && /^-\s+/.test(lines[i].trim())) {
+        items.push(lines[i].trim().replace(/^-\s+/, ""));
+        i += 1;
+      }
+      i -= 1;
+      blocks.push({ type: "ul", items });
+      continue;
+    }
+    if (/^\d+\.\s+/.test(line)) {
+      flushParagraph();
+      const items: string[] = [];
+      while (i < lines.length && /^\d+\.\s+/.test(lines[i].trim())) {
+        items.push(lines[i].trim().replace(/^\d+\.\s+/, ""));
+        i += 1;
+      }
+      i -= 1;
+      blocks.push({ type: "ol", items });
+      continue;
+    }
+    paragraph.push(line);
+  }
+
+  flushParagraph();
+  return blocks;
+}
+
+function listMarkdownFiles(dir: string): string[] {
+  if (!fs.existsSync(dir)) return [];
+  return fs
+    .readdirSync(dir)
+    .filter((filename) => filename.endsWith(".md"))
+    .sort()
+    .reverse();
+}
+
+function unique(values: Array<string | undefined>): string[] {
+  return Array.from(new Set(values.map((value) => value?.trim()).filter(Boolean) as string[]));
+}
+
+function parseMetaTags(meta: Record<string, string>): string[] {
+  return unique([
+    meta.main_keyword,
+    ...String(meta.tags ?? "").split(/[\s,]+/),
+    "AI\u898b\u7a4d",
+  ]).slice(0, 5);
+}
+
+function readMarkdownBlogPosts(): BlogPost[] {
+  const contentDir = path.resolve(process.cwd(), "content", "blog");
+  const draftDir = path.resolve(process.cwd(), "..", "marketing", "content-automation", "drafts", "blog");
+  const filenames = Array.from(
+    new Set([...listMarkdownFiles(contentDir), ...listMarkdownFiles(draftDir)]),
+  );
+
+  return filenames.flatMap((filename) => {
+    const localPath = path.join(contentDir, filename);
+    const draftPath = path.join(draftDir, filename);
+    const filePath = fs.existsSync(localPath) ? localPath : draftPath;
+    if (!fs.existsSync(filePath)) return [];
+    const markdown = fs.readFileSync(filePath, "utf8").replace(/^\uFEFF/, "");
+    const meta = parseFrontmatter(markdown);
+    if (!meta.slug || !meta.title || !meta.description) return [];
+    return [
       {
-        type: "lead",
-        text: "リフォーム工事の見積は、クロス、クッションフロア、巾木、クリーニング、設備交換など定番品目が多い一方で、現場ごとの数量確認と単価確認に時間がかかります。『あとでExcelに入力しよう』と思っているうちに、写真やメモを探し直すこともありますよね。この記事では、リフォーム工事の見積作成を早くするために、AI音声入力と単価マスターをどう使うかを整理します。",
+        slug: meta.slug,
+        title: meta.title,
+        description: meta.description,
+        date: meta.publishedAt ?? filename.slice(0, 10),
+        tags: parseMetaTags(meta),
+        body: markdownToBlocks(markdown),
       },
-      { type: "h2", text: "リフォーム工事の見積作成が遅くなる理由" },
-      {
-        type: "p",
-        text: "リフォーム工事は、作業そのものよりも**見積に必要な情報を集め直す時間**が見えにくい負担になります。現場で見た内容、写真、入居者や管理会社からの指示、社内の単価表が別々にあると、見積作成時に何度も確認が発生します。",
-      },
-      {
-        type: "table",
-        headers: ["つまずきやすい作業", "起きやすい問題", "対策"],
-        rows: [
-          ["現場メモ", "写真、LINE、手帳に情報が分散する", "その場で音声メモとして残す"],
-          ["単価確認", "クロスやCFなどの単価を毎回探す", "単価マスターから候補を出す"],
-          ["社内指示", "顧客向け備考と業者向け指示が混ざる", "提出用と内部用を最初から分ける"],
-        ],
-      },
-      { type: "h2", text: "まず単価マスターを整える" },
-      {
-        type: "p",
-        text: "AIを使う前に整えたいのが単価マスターです。リフォーム工事では、クロス貼替、クッションフロア貼替、ソフト巾木、クリーニング、スイッチ交換など、繰り返し使う品目が多くあります。これらを品目名、単位、単価でそろえておくと、見積のブレを減らせます。",
-      },
-      {
-        type: "table",
-        headers: ["品目例", "単位", "管理ポイント"],
-        rows: [
-          ["クロス貼替", "㎡", "面積と単価を統一する"],
-          ["クッションフロア貼替", "㎡", "部屋別に数量を残す"],
-          ["ソフト巾木", "m", "単位表記をぶらさない"],
-          ["クリーニング", "式", "間取り別の定番単価を作る"],
-        ],
-      },
-      {
-        type: "cta",
-        title: "単価マスターを使った見積デモを確認する",
-        text: "ボイス見積では、現場で話した内容を明細候補にし、登録済みの単価マスターから単位と単価を反映する流れを試せます。",
-        href: "/login",
-        label: "デモを試す",
-      },
-      { type: "h2", text: "現場ではキーボード入力より音声入力が向いている" },
-      {
-        type: "p",
-        text: "リフォーム工事の現場では、部屋を移動しながら確認することが多く、スマホで細かく入力するのは面倒です。そこで、場所、品目、数量、注意点を声で残し、あとから明細候補に変換する流れが合います。",
-      },
-      {
-        type: "ol",
-        items: [
-          "部屋名や場所を最初に話す",
-          "品目名と数量を続けて話す",
-          "管理会社向け備考と業者指示を分けて話す",
-          "事務所で単価と数量を確認して確定する",
-        ],
-      },
-      { type: "h2", text: "AIに任せる範囲と人が確認する範囲を分ける" },
-      {
-        type: "p",
-        text: "AI見積で大事なのは、AIに金額を勝手に決めさせないことです。AIは現場メモを整理し、明細候補を作る役に留めます。単位、単価、数量、提出前の表現は担当者が確認することで、便利さと安全性を両立できます。",
-      },
-      {
-        type: "callout",
-        tone: "amber",
-        title: "提出書類に内部メモを混ぜない",
-        text: "原価判断、業者への注意、値引き判断などは、顧客向け見積書に入れる情報ではありません。AIで整理する段階から、顧客向け備考と社内向けメモを分けておきましょう。",
-      },
-      { type: "h2", text: "リフォーム工事の見積時短チェックリスト" },
-      {
-        type: "ul",
-        items: [
-          "定番品目の単価マスターを作っている",
-          "単位表記を㎡、m、個、式で統一している",
-          "現場メモを写真だけに頼っていない",
-          "社内指示と顧客向け備考を分けている",
-          "Excel/PDF出力前に数量と単価を人が確認している",
-        ],
-      },
-      { type: "h2", text: "よくある質問" },
-      { type: "h3", text: "Q. リフォーム工事の見積はAIだけで完成できますか？" },
-      {
-        type: "p",
-        text: "完成ではなく、下書き作成に使うのが現実的です。特に数量や単価は、現場担当者が確認してから確定する必要があります。",
-      },
-      { type: "h3", text: "Q. 今のExcel単価表は使えますか？" },
-      {
-        type: "p",
-        text: "使えます。むしろ最初は既存のExcel単価表を活かし、品目名、単位、単価をマスター化する方が定着しやすいです。",
-      },
-      { type: "h3", text: "Q. 管理会社向けの表現もAIで整えられますか？" },
-      {
-        type: "p",
-        text: "下書きとして整えることはできます。ただし、請求先や契約条件に関わる表現は、提出前に必ず人が確認する運用にしましょう。",
-      },
-      { type: "h2", text: "まとめ" },
-      {
-        type: "p",
-        text: "リフォーム工事の見積作成を早くするには、AIを入れる前に単価マスターを整え、現場メモを音声で残し、顧客向け情報と社内向け情報を分けることが重要です。AIは見積を確定する人ではなく、見積明細の下書きを作る補助役として使うと、現場にも馴染みやすくなります。",
-      },
-      {
-        type: "cta",
-        title: "リフォーム工事の見積下書きを音声で試す",
-        text: "クロス、CF、クリーニング、設備交換などの定番品目を、音声入力と単価マスターで整理する流れを確認できます。",
-        href: "/login",
-        label: "デモを試す",
-      },
-    ],
-  },
-  {
-    slug: "construction-ai-estimate-tool-comparison",
-    title: "建設業向けAI見積ツールの選び方｜オールインワンと音声特化の違い",
-    description:
-      "建設業向けAI見積ツールを比較するときは、機能の多さだけでなく現場入力、単価マスター、Excel互換、社内メモ分離を確認することが重要です。",
-    date: "2026-06-03",
-    tags: ["AI見積", "建設業", "比較", "音声入力"],
-    body: [
-      {
-        type: "lead",
-        text: "建設業向けAI見積ツールを調べると、見積だけでなく請求・工程表・粗利管理まで含むオールインワン型のサービスが目立ちます。便利そうに見える一方で、『現場で今日の見積を早く作りたい』だけなら、重すぎることもあります。この記事では、AI見積ツールを選ぶときの比較軸と、音声入力に特化した選び方を整理します。",
-      },
-      { type: "h2", text: "建設業向けAI見積ツールは大きく2種類ある" },
-      {
-        type: "p",
-        text: "まず押さえたいのは、AI見積ツールには**業務全体をまとめるオールインワン型**と、**見積作成の入口を軽くする特化型**があることです。どちらが優れているというより、会社の今の課題によって向き不向きが変わります。",
-      },
-      {
-        type: "table",
-        headers: ["タイプ", "向いている会社", "注意点"],
-        rows: [
-          ["オールインワン型", "見積、請求、工程表、原価、顧客管理まで一気に整えたい会社", "導入範囲が広く、現場定着まで時間がかかりやすい"],
-          ["音声入力特化型", "まず現場メモから見積明細を作る時間を減らしたい会社", "請求や工程管理まで一気通貫したい場合は別機能が必要"],
-        ],
-      },
-      { type: "h2", text: "比較で見るべきポイントは機能数ではない" },
-      {
-        type: "p",
-        text: "機能一覧だけを見ると、どうしても項目が多いサービスが強く見えます。ですが、小規模工事やリフォーム工事、リフォームの現場では、実際に困っているのは『入力が面倒』『単価を探す』『社内メモを消し忘れる』といった日々の作業です。",
-      },
-      {
-        type: "ul",
-        items: [
-          "現場でスマホから入力しやすいか",
-          "自社の単価マスターをそのまま使えるか",
-          "ExcelやPDFへ自然に出せるか",
-          "顧客向けメモと業者指示事項を分けられるか",
-          "使い始めるまでに教育や設定が重すぎないか",
-        ],
-      },
-      {
-        type: "cta",
-        title: "まずは見積だけAI化したい方へ",
-        text: "ボイス見積は、現場で話した内容を明細候補にし、単価マスターから単位・単価を反映する流れをデモで確認できます。",
-        href: "/login",
-        label: "デモを試す",
-      },
-      { type: "h2", text: "オールインワン型と音声特化型の比較" },
-      {
-        type: "table",
-        headers: ["比較項目", "オールインワン型", "音声入力特化型"],
-        rows: [
-          ["導入目的", "業務全体のDX", "見積作成の時短"],
-          ["最初に変える業務", "案件管理や工程管理も含めて広く変更", "現場メモと見積明細作成から変更"],
-          ["現場入力", "機能内の入力フォーム中心になりやすい", "話すだけで下書き化しやすい"],
-          ["Excel文化との相性", "移行前提になりやすい", "既存Excel単価表を活かしやすい"],
-          ["向く現場", "管理業務をまとめたい中小建設会社", "小規模工事、リフォーム、リフォーム工事、塗装"],
-        ],
-      },
-      { type: "h2", text: "音声AI見積が刺さる会社の特徴" },
-      {
-        type: "p",
-        text: "音声AI見積が特に合うのは、現場を回る人と見積を作る人が近い会社です。現場で聞いた内容を、その日のうちに見積明細へ落とせると、帰社後の入力時間と確認の往復が減ります。",
-      },
-      {
-        type: "ol",
-        items: [
-          "現場調査後、夜にExcelへ転記している",
-          "クロス、CF、クリーニング、設備交換など定番品目が多い",
-          "担当者によって単価や書き方がバラつく",
-          "社内向けの注意事項を顧客提出書類に出したくない",
-          "大きな業務システムの導入前に、小さく試したい",
-        ],
-      },
-      { type: "h2", text: "単価マスターと社内メモ分離は必ず確認する" },
-      {
-        type: "p",
-        text: "AIが文章を作るだけでは、見積としてはまだ弱いです。重要なのは、AIが拾った品目を**自社の単価マスターに紐づけること**です。単位と単価をAIに勝手に判断させず、会社で決めた単価から反映することで、見積金額のブレを抑えられます。",
-      },
-      {
-        type: "callout",
-        tone: "amber",
-        title: "顧客向けと社内向けを混ぜない",
-        text: "業者指示、搬入経路、原価判断、注意事項は顧客向けPDFに出すべきではありません。AI見積ツールを選ぶときは、顧客向け備考と内部指示を分けられるかを確認しましょう。",
-      },
-      { type: "h2", text: "導入前チェックリスト" },
-      {
-        type: "ul",
-        items: [
-          "既存の単価表を取り込めるか",
-          "スマホで現場入力できるか",
-          "見積明細の下書きから編集までが簡単か",
-          "Excel/PDF出力に対応しているか",
-          "社内メモを顧客提出書類から除外できるか",
-          "まず一人・一現場で試せるか",
-        ],
-      },
-      { type: "h2", text: "よくある質問" },
-      { type: "h3", text: "Q. オールインワン型を選んだ方が安全ですか？" },
-      {
-        type: "p",
-        text: "業務全体を同時に整えたいなら有力です。ただし、最初の課題が見積作成の時短なら、見積に絞って小さく始めた方が定着しやすい場合があります。",
-      },
-      { type: "h3", text: "Q. 音声入力だけで見積は完成しますか？" },
-      {
-        type: "p",
-        text: "完成ではなく下書きと考えるのが安全です。数量、単価、備考、社内指示を確認してから提出用に整える流れが現実的です。",
-      },
-      { type: "h3", text: "Q. Excelの単価表は捨てる必要がありますか？" },
-      {
-        type: "p",
-        text: "いいえ。むしろ最初は既存のExcel単価表を活かした方が導入しやすいです。慣れた単価をマスター化し、見積明細へ呼び出す形がおすすめです。",
-      },
-      { type: "h2", text: "まとめ" },
-      {
-        type: "p",
-        text: "建設業向けAI見積ツールは、機能数だけで選ぶと現場に合わないことがあります。オールインワン型は業務全体の整理に強く、音声入力特化型は現場から見積明細を作る入口を軽くするのに向いています。まずは自社の一番痛い作業がどこかを決め、そこから小さくAI化しましょう。",
-      },
-      {
-        type: "cta",
-        title: "現場音声から見積明細を作る流れを確認する",
-        text: "ボイス見積では、音声入力、単価マスター反映、顧客向け備考と業者指示の分離、Excel/PDF出力までの流れを確認できます。",
-        href: "/login",
-        label: "デモを試す",
-      },
-    ],
-  },  {
-    slug: "genba-de-mitsumori",
-    title: "外壁塗装の見積もりを「現場で」作る — 帰社後の事務作業を減らす考え方",
-    description:
-      "外壁塗装やリフォームの見積が遅れる原因は、現場メモと単価表が別々にあること。現場で見積の下書きまで進め、帰社後の入力作業を減らす考え方を整理します。",
-    date: "2026-06-02",
-    tags: ["外壁塗装", "見積効率化", "現場業務"],
-    body: [
-      {
-        type: "lead",
-        text: "外壁塗装やリフォームの見積は、現場調査そのものより「帰ってからの入力」に時間を取られがちです。日中は現場、夜は見積——その流れを変える第一歩は、見積づくりを現場の中に組み込むことです。",
-      },
-      { type: "h2", text: "見積作成が「帰社後」に溜まる理由" },
-      {
-        type: "p",
-        text: "小規模な塗装店やリフォーム会社の多くは、現場で寸法や仕様をメモし、帰社後にExcelや見積ソフトへ転記する二段構えで動いています。現場の情報と社内の単価表が別々の場所にあるため、どうしても転記と確認の往復が生まれます。",
-      },
-      {
-        type: "ul",
-        items: [
-          "現場メモが手帳・写真・LINE・記憶に分散しやすい",
-          "単位や単価をExcelから探して転記する手間がかかる",
-          "一日に数件まわると、入力が夜にまとめて押し寄せる",
-        ],
-      },
-      { type: "h2", text: "「現場で下書きまで」進めるとどう変わるか" },
-      {
-        type: "p",
-        text: "見積の確定は事務所で落ち着いて行うとしても、明細の下書きだけは現場で済ませておく。これだけで、記憶が新しいうちに内容を残せて、抜け漏れや「あの数字なんだっけ」が減ります。",
-      },
-      {
-        type: "ul",
-        items: [
-          "記憶が鮮明なうちに明細を残せる",
-          "夜の事務作業が短くなる",
-          "現場ごとの「言った・言わない」が減る",
-        ],
-      },
-      { type: "h2", text: "現場で見積を進める3つのコツ" },
-      {
-        type: "ol",
-        items: [
-          "**単価表を先に整える**：品目・単位・単価がそろっていれば、現場で金額の目安まで出せます。",
-          "**話す順番を決める**：場所 → 品目 → 数量 → 備考、と型を決めると漏れません。",
-          "**下書きは現場、確定は事務所**：現場ではスピード優先で粗く、最終確認は落ち着いた場所で行います。",
-        ],
-      },
-      {
-        type: "callout",
-        tone: "sky",
-        title: "顧客に見せる前提で書く",
-        text: "現場メモのうち、お客様に見せる説明と、社内向けの段取り・原価は最初から分けて書いておくと、清書のときに迷いません。",
-      },
-      { type: "h2", text: "キーボードが苦手でも進められる「音声入力」という手" },
-      {
-        type: "p",
-        text: "現場でスマホのキーを打つのは大変です。そこで、作業内容を声で残し、その内容から明細の下書きをつくるという発想があります。私たちが試作している「ボイス見積」も、まさにこの考え方で作っているプロトタイプです。",
-      },
-    ],
-  },
-  {
-    slug: "mitsumori-jikan-tanshuku",
-    title: "リフォーム・塗装の見積作成時間を短くする5つの工夫",
-    description:
-      "見積作成に毎回時間がかかるのは、段取りで改善できます。単価表の整備からテンプレ化、現場での下書きまで、今日から試せる5つの工夫を紹介します。",
-    date: "2026-06-02",
-    tags: ["見積効率化", "時短", "リフォーム"],
-    body: [
-      {
-        type: "lead",
-        text: "見積作成は、慣れていても一件にまとまった時間がかかります。多くは「探す・転記する・確認する」の繰り返し。ここを段取りで削るだけで、作成時間はぐっと短くなります。",
-      },
-      { type: "h2", text: "1. 単価表を「探さなくていい」状態にする" },
-      {
-        type: "p",
-        text: "毎回どこかから単価を探していませんか。よく使う品目・単位・単価を一覧にまとめておくだけで、転記の時間と入力ミスが減ります。効果が一番大きく、他の工夫の土台にもなります。",
-      },
-      { type: "h2", text: "2. よく出る見積を「型」にする" },
-      {
-        type: "p",
-        text: "外壁塗装一式、屋根塗装一式など、定番の構成はテンプレート化しておきます。ゼロから組むのをやめると、作成が速くなるだけでなく、抜け漏れも減ります。",
-      },
-      { type: "h2", text: "3. 現場で下書きまで終える" },
-      {
-        type: "p",
-        text: "記憶が新しいうちに明細の骨格を作っておくと、事務所での作業は確認と清書だけになります。現場での進め方は別記事「外壁塗装の見積もりを現場で作る」でも触れています。",
-      },
-      { type: "h2", text: "4. 顧客用と社内用を最初から分ける" },
-      {
-        type: "p",
-        text: "原価や業者指示を後から消す運用は、急ぐと必ず抜けます。最初から別に書いておけば、清書が速く、しかも安全です。",
-      },
-      { type: "h2", text: "5. 入力の手間そのものを減らす" },
-      {
-        type: "p",
-        text: "キーボード入力が負担なら、音声で内容を残してから明細化する方法もあります。打つより話す方が速い場面は、現場に多くあります。",
-      },
-      {
-        type: "callout",
-        tone: "sky",
-        title: "まずは1番から",
-        text: "単価表の整備が最も効果が大きく、2〜5の工夫すべての土台になります。一つだけ選ぶなら、ここから始めるのがおすすめです。",
-      },
-    ],
-  },
-  {
-    slug: "mitsumori-zokujinka",
-    title: "見積金額が人によってバラつく — 「属人化」を抜け出す標準化の進め方",
-    description:
-      "担当者によって見積金額や書き方が変わると、粗利のブレやクレームの原因になります。見積の属人化を解消し、標準化を進めるための実践ステップを解説します。",
-    date: "2026-06-02",
-    tags: ["見積", "属人化", "標準化"],
-    body: [
-      {
-        type: "lead",
-        text: "「あの人が作る見積は通るけど、原価ギリギリ」「人によって書き方も金額もバラバラ」——見積の属人化は、粗利のブレやクレームに直結します。",
-      },
-      { type: "h2", text: "属人化が起きる理由" },
-      {
-        type: "ul",
-        items: [
-          "単価や歩掛が個人の頭の中にある",
-          "過去の見積が共有されず、あとから参照できない",
-          "値引きやサービスの判断基準が人によって違う",
-        ],
-      },
-      { type: "h2", text: "標準化で何が良くなるか" },
-      {
-        type: "ul",
-        items: [
-          "誰が作っても金額の根拠がそろう",
-          "粗利の下振れを防げる",
-          "新人でも一定品質の見積を出せる",
-        ],
-      },
-      { type: "h2", text: "標準化の進め方（4ステップ）" },
-      {
-        type: "ol",
-        items: [
-          "単価・歩掛を一覧にして共有する",
-          "過去の見積を「型」として残す",
-          "値引きの上限や判断基準をルール化する",
-          "顧客用と社内用の情報を分けて、金額の根拠を社内に残す",
-        ],
-      },
-      {
-        type: "callout",
-        tone: "amber",
-        title: "社内に「根拠」を残す",
-        text: "なぜこの金額か（原価・歩掛・値引き判断）は社内情報として残し、顧客提出書類とは分けて管理します。根拠が残ると、属人化は自然に薄まります。",
-      },
-      { type: "h2", text: "ツールに頼る前に、まず「型」から" },
-      {
-        type: "p",
-        text: "いきなりシステムを入れなくても、単価表と見積テンプレを共有するだけで属人化はかなり改善します。その土台があるほど、後でツールを入れたときの効果も大きくなります。",
-      },
-    ],
-  },
-  {
-    slug: "tegaki-excel-sotsugyo",
-    title: "手書き・Excelの見積から卒業する — 小さな塗装店のデジタル化、最初の一歩",
-    description:
-      "手書きやExcelの見積をやめたいけれど、何から始めればいいか分からない。小規模な塗装店・リフォーム会社が無理なくデジタル化を進めるための、現実的な第一歩を紹介します。",
-    date: "2026-06-02",
-    tags: ["見積効率化", "デジタル化", "Excel"],
-    body: [
-      {
-        type: "lead",
-        text: "「そろそろ手書きやExcelを卒業したい。でも大げさなシステムは不安だし、現場で使いこなせる気がしない」——小さな会社ほど、この入口でつまずきます。",
-      },
-      { type: "h2", text: "いきなり大きなシステムを入れなくていい" },
-      {
-        type: "p",
-        text: "建設・リフォーム業向けの業務システムには高機能なものが多くありますが、初期費用や月額、覚えることの多さで、零細規模には重いことがあります。まずは“今の困りごと一つ”から始めるのが現実的です。",
-      },
-      { type: "h2", text: "デジタル化の「最初の一歩」を一つに絞る" },
-      {
-        type: "p",
-        text: "全部を一度に変えようとすると続きません。見積まわりなら、次のどれか一つから始めると効果を感じやすいです。",
-      },
-      {
-        type: "ol",
-        items: [
-          "単価表をデジタル化して、探さず使える状態にする",
-          "見積をテンプレ化して、ゼロから作るのをやめる",
-          "現場での入力を、音声など負担の少ない方法に変える",
-        ],
-      },
-      { type: "h2", text: "続けられる条件は「現場で使えるか」" },
-      {
-        type: "p",
-        text: "事務所のPCでしか使えない仕組みは、現場仕事の多い塗装店では続きにくいものです。スマホで完結する・操作が少ない・覚えることが少ない——この3つが、続けられるかの分かれ目になります。",
-      },
-      {
-        type: "callout",
-        tone: "sky",
-        title: "小さく試す",
-        text: "最初から全社導入を決めず、一人・一現場で試して合うかを確かめるのがおすすめです。合わなければ戻せる範囲で始めましょう。",
-      },
-      { type: "h2", text: "「話すだけ」から始める選択肢" },
-      {
-        type: "p",
-        text: "キーボード入力やソフトの操作が苦手でも、現場で話した内容から見積の下書きができれば、デジタル化のハードルは大きく下がります。私たちの「ボイス見積」も、その入口を軽くすることを目指した試作です。",
-      },
-    ],
-  },
-];
+    ];
+  });
+}
+
+export const BLOG_POSTS: BlogPost[] = readMarkdownBlogPosts();
 
 export function getAllPosts(): BlogPost[] {
   return [...BLOG_POSTS].sort((a, b) => b.date.localeCompare(a.date));
@@ -509,5 +217,5 @@ export function readingMinutes(post: BlogPost): number {
 
 export function formatDate(date: string): string {
   const [y, m, d] = date.split("-");
-  return `${y}年${Number(m)}月${Number(d)}日`;
+  return `${y}\u5e74${Number(m)}\u6708${Number(d)}\u65e5`;
 }

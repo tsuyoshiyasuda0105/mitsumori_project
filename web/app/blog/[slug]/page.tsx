@@ -107,10 +107,14 @@ export default function BlogPostPage({
       />
       <article className="mx-auto max-w-3xl px-5 py-10 sm:py-14">
         {/* パンくず */}
-        <nav className="flex items-center gap-1.5 text-xs text-slate-400">
+        <nav className="flex flex-wrap items-center gap-1.5 text-xs text-slate-400">
+          <Link href="/" className="hover:text-brand-700">
+            ホーム
+          </Link>
+          <span>/</span>
           <Link href="/blog" className="inline-flex items-center gap-1 hover:text-brand-700">
             <ArrowLeft className="text-sm" />
-            お役立ち記事
+            見積DXブログ
           </Link>
         </nav>
 
@@ -135,6 +139,25 @@ export default function BlogPostPage({
         </header>
 
         <hr className="my-7 border-slate-100" />
+
+        <section className="mb-8 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-brand-700">
+            After reading
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            {[
+              ["読む", "考え方を整理"],
+              ["試す", "デモで画面確認"],
+              ["相談", "自社の単価表で確認"],
+            ].map(([title, body], index) => (
+              <div key={title} className="rounded-xl bg-white p-4 shadow-sm">
+                <span className="text-xs font-black text-slate-400">0{index + 1}</span>
+                <p className="mt-1 text-sm font-black text-slate-950">{title}</p>
+                <p className="mt-1 text-xs font-medium leading-5 text-slate-500">{body}</p>
+              </div>
+            ))}
+          </div>
+        </section>
 
         {/* 本文 */}
         <BlogContent body={post.body} />
