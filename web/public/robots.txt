@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /customers
+Disallow: /estimates
+Disallow: /import
+Disallow: /price-items
+Disallow: /settings
+Disallow: /login
+
+Sitemap: https://web-beryl-one-79.vercel.app/sitemap.xml
