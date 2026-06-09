@@ -19,7 +19,7 @@
 
 ## 公開URL
 
-- note: https://note.com/bold_vole5830/n/n2d02a39addc6
+- note: https://note.com/bold_vole5830/n/n0fa1179005f8
 - ホームページブログ: https://web-beryl-one-79.vercel.app/blog/small-team-light-estimate
 
 ## 投稿コマンド
