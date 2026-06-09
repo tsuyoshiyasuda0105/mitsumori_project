@@ -1,0 +1,35 @@
+{
+  "date": "2026-06-09",
+  "slug": "small-team-light-estimate",
+  "title": "1〜5人の会社にこそ、重すぎない見積ツールが必要だと思う",
+  "platform": "note",
+  "status": "publish-ready",
+  "main_theme": "小規模チームに合う軽い見積ツール",
+  "target_reader": "1〜5人規模のリフォーム工事会社・小規模建設会社の経営者、営業担当、現場担当",
+  "cta_url": "https://web-beryl-one-79.vercel.app/lp",
+  "x_account": "https://x.com/kabu_network",
+  "note_package": "marketing/note/publish-ready/2026-06-09_small-team-light-estimate",
+  "files": {
+    "title": "title.txt",
+    "body_note_ready": "body-note-ready.txt",
+    "body_markdown": "body.md",
+    "hashtags": "hashtags.txt",
+    "x_posts": "x-posts.md",
+    "thumbnail_direction": "thumbnail-direction.md",
+    "thumbnail": "thumbnail.png"
+  },
+  "publishing": {
+    "profile": "voice-estimate",
+    "price": "free",
+    "use_file_args": true,
+    "publish_allowed_by_user": true,
+    "published_url": "https://note.com/bold_vole5830/n/n2d02a39addc6",
+    "homepage_blog_url": "https://web-beryl-one-79.vercel.app/blog/small-team-light-estimate"
+  },
+  "safety_checks": [
+    "AIが見積金額を確定する表現を避けた",
+    "実績、導入社数、保証、料金を断定していない",
+    "リフォーム工事の表現に統一した",
+    "note以外の外部投稿はしない"
+  ]
+}
